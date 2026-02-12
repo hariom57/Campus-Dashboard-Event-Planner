@@ -1,0 +1,134 @@
+.resources-page {
+    padding-bottom: var(--space-3xl);
+}
+
+.resources-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: var(--space-xl);
+}
+
+.res-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.res-card {
+    display: flex;
+    gap: var(--space-lg);
+    padding: var(--space-lg);
+    align-items: flex-start;
+}
+
+.res-icon-wrap {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.res-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.res-top {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.res-top h3 {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.res-content p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.res-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+/* Sidebar */
+.res-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.quick-links {
+    display: flex;
+    flex-direction: column;
+}
+
+.quick-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.5rem;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--grey-100);
+    color: var(--text-primary);
+    transition: var(--transition-fast);
+}
+
+.quick-link:hover {
+    color: var(--brand-blue);
+    padding-left: 0.85rem;
+}
+
+.quick-link:last-child {
+    border-bottom: none;
+}
+
+.res-help {
+    padding: var(--space-lg);
+    background: linear-gradient(135deg, var(--grey-900), var(--grey-800));
+    border: none;
+    color: white;
+}
+
+.res-help h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.res-help p {
+    font-size: 0.85rem;
+    color: var(--grey-400);
+    line-height: 1.5;
+    margin-bottom: var(--space-md);
+}
+
+.res-help .btn-outline {
+    color: white;
+    border-color: var(--grey-600);
+}
+
+.res-help .btn-outline:hover {
+    border-color: var(--brand-yellow);
+    background: rgba(255, 233, 32, 0.1);
+    color: var(--brand-yellow);
+}
+
+@media (max-width: 768px) {
+    .resources-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .res-card {
+        flex-direction: column;
+    }
+}

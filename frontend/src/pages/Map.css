@@ -1,0 +1,305 @@
+.map-page {
+    padding-bottom: var(--space-3xl);
+}
+
+.map-page-header {
+    padding: var(--space-2xl) 0;
+}
+
+.page-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+.map-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+    flex-wrap: wrap;
+}
+
+.map-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--grey-200);
+    border-radius: var(--radius-md);
+    flex: 1;
+    max-width: 350px;
+}
+
+.map-search input {
+    border: none;
+    background: none;
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.map-search svg {
+    color: var(--text-secondary);
+}
+
+.zone-filters {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.map-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: var(--space-xl);
+    min-height: 600px;
+}
+
+/* Canvas */
+.map-canvas {
+    overflow: hidden;
+}
+
+.campus-map {
+    position: relative;
+    width: 100%;
+    height: 600px;
+    background: linear-gradient(135deg, #f0f4f8 0%, #e8eef4 50%, #f5f7fb 100%);
+    border-radius: var(--radius-lg);
+}
+
+.campus-zone {
+    position: absolute;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: flex-start;
+    padding: var(--space-md);
+}
+
+.campus-zone span {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.6;
+}
+
+.academic-zone {
+    background: #667eea10;
+    border: 1px dashed #667eea30;
+}
+
+.sports-zone {
+    background: #4facfe10;
+    border: 1px dashed #4facfe30;
+}
+
+.cultural-zone {
+    background: #f5576c10;
+    border: 1px dashed #f5576c30;
+}
+
+.campus-road {
+    position: absolute;
+    background: var(--grey-200);
+    border-radius: 2px;
+}
+
+.map-pin {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    color: var(--pin-color, var(--brand-blue));
+    cursor: pointer;
+    transition: var(--transition-fast);
+    z-index: 5;
+    padding: 4px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: var(--shadow-md);
+}
+
+.map-pin:hover,
+.map-pin.selected {
+    transform: translate(-50%, -100%) scale(1.3);
+    z-index: 10;
+    box-shadow: var(--shadow-lg);
+}
+
+.map-pin.selected {
+    background: var(--pin-color);
+    color: white;
+}
+
+.pin-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 18px;
+    height: 18px;
+    background: var(--brand-red);
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 700;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+}
+
+/* Sidebar */
+.map-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.venue-detail-header {
+    padding: var(--space-lg);
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.venue-detail-header h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.venue-detail-body {
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.venue-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.venue-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.venue-events-count {
+    font-weight: 700;
+    color: var(--brand-red);
+}
+
+.venue-empty {
+    padding: var(--space-2xl);
+    text-align: center;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.venue-empty svg {
+    color: var(--grey-300);
+}
+
+.venue-empty h4 {
+    color: var(--text-primary);
+}
+
+.venue-empty p {
+    font-size: 0.85rem;
+}
+
+.venues-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.venues-list-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.5rem;
+}
+
+.venue-list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: var(--radius-md);
+    transition: var(--transition-fast);
+    width: 100%;
+    text-align: left;
+}
+
+.venue-list-item:hover,
+.venue-list-item.active {
+    background: var(--grey-100);
+}
+
+.venue-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.venue-list-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.venue-list-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.venue-list-zone {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.venue-event-badge {
+    background: var(--brand-red);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 700;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .map-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .campus-map {
+        height: 400px;
+    }
+}
