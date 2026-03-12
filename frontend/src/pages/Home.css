@@ -201,6 +201,44 @@
     font-weight: 600;
 }
 
+.loading-state p {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Flex layout for Event Feed and Sidebar */
+.home-content-split {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+.home-content-split .event-feed {
+    flex: 1;
+    min-width: 0;
+}
+
+.home-sidebar {
+    width: 350px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 140px;
+    /* Keep it in view when scrolling past the sticky filters */
+}
+
+/* Ensure mobile layout stacks them */
+@media (max-width: 900px) {
+    .home-content-split {
+        flex-direction: column;
+    }
+
+    .home-sidebar {
+        width: 100%;
+        position: static;
+        margin-top: 2rem;
+    }
+}
+
 .feed-list {
     display: flex;
     flex-direction: column;

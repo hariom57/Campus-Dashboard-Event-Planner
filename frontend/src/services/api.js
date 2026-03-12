@@ -17,10 +17,10 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            // If we get a 401, the user is likely not logged in or session expired
-            // We could redirect to login or clear local state here
-            // window.location.href = '/'; 
-            console.warn('Unauthorized access - session might be expired');
+            // Only warn if it's NOT the initial user check (which naturally returns 401 if logged out)
+            if (!error.config.url.endsWith('/oauth/user')) {
+                console.warn('Unauthorized access - session might be expired');
+            }
         }
         return Promise.reject(error);
     }

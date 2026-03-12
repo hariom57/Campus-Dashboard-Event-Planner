@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Filter, Loader, Grid, List } from 'lucide-react';
 import EventCard from '../components/Event/EventCard';
+import TodoList from '../components/Widgets/TodoList';
 import eventService from '../services/events';
 import './Home.css';
 
@@ -12,11 +13,13 @@ const Home = () => {
   // Filter States
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedClub, setSelectedClub] = useState('All');
+  const [selectedVenue, setSelectedVenue] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
 
   // Derived Lists for Dropdowns
   const [uniqueCategories, setUniqueCategories] = useState([]);
   const [uniqueClubs, setUniqueClubs] = useState([]);
+  const [uniqueVenues, setUniqueVenues] = useState([]);
 
   // Date Strip Helper: Today + 13 days
   const dates = Array.from({ length: 14 }, (_, i) => {
@@ -34,6 +37,7 @@ const Home = () => {
         // Extract all unique categories and clubs from the valid data
         const cats = new Set();
         const clubs = new Set();
+        const venues = new Set();
 
         const formattedEvents = data.map(ev => {
           // Extract categories from comma-separated string provided by backend subquery
@@ -43,6 +47,7 @@ const Home = () => {
 
           eventCats.forEach(c => cats.add(c));
           if (ev.club_name) clubs.add(ev.club_name);
+          if (ev.location_name) venues.add(ev.location_name);
 
           return {
             id: ev.id,
@@ -60,6 +65,7 @@ const Home = () => {
 
         setUniqueCategories(['All', ...Array.from(cats).sort()]);
         setUniqueClubs(['All', ...Array.from(clubs).sort()]);
+        setUniqueVenues(['All', ...Array.from(venues).sort()]);
         setEvents(formattedEvents);
       } catch (error) {
         console.error("Failed to load events", error);
@@ -96,7 +102,12 @@ const Home = () => {
       ? true
       : ev.club === selectedClub;
 
-    return matchesDate && matchesCategory && matchesClub;
+    // 4. Venue Filter
+    const matchesVenue = selectedVenue === 'All'
+      ? true
+      : ev.venue === selectedVenue;
+
+    return matchesDate && matchesCategory && matchesClub && matchesVenue;
   });
 
   return (
@@ -164,54 +175,74 @@ const Home = () => {
                 ))}
               </select>
             </div>
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label>Filter by Venue:</label>
+              <select
+                value={selectedVenue}
+                onChange={(e) => setSelectedVenue(e.target.value)}
+                className="filter-select"
+              >
+                {uniqueVenues.map(ven => (
+                  <option key={ven} value={ven}>{ven}</option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
       </div>
 
-      {/* 3. Event Feed */}
-      <div className="event-feed container">
-        <div className="feed-header">
-          <div>
-            <h2>{selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</h2>
-            {(selectedCategory !== 'All' || selectedClub !== 'All') && (
-              <span className="filter-status">
-                {selectedCategory !== 'All' && <span className="tag">{selectedCategory}</span>}
-                {selectedClub !== 'All' && <span className="tag">{selectedClub}</span>}
-              </span>
-            )}
+      {/* Main Content Split Layer */}
+      <div className="home-content-split container">
+        {/* 3. Event Feed (Left side on Desktop) */}
+        <div className="event-feed">
+          <div className="feed-header">
+            <div>
+              <h2>{selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</h2>
+              {(selectedCategory !== 'All' || selectedClub !== 'All') && (
+                <span className="filter-status">
+                  {selectedCategory !== 'All' && <span className="tag">{selectedCategory}</span>}
+                  {selectedClub !== 'All' && <span className="tag">{selectedClub}</span>}
+                </span>
+              )}
+            </div>
+            <span className="event-count">{filteredEvents.length} Events</span>
           </div>
-          <span className="event-count">{filteredEvents.length} Events</span>
+
+          {loading ? (
+            <div className="loading-state">
+              <Loader className="animate-spin" size={32} />
+              <p>Loading Events...</p>
+            </div>
+          ) : (
+            <div className="feed-list">
+              {filteredEvents.length > 0 ? (
+                filteredEvents.map(event => (
+                  <EventCard key={event.id} event={event} compact={true} />
+                ))
+              ) : (
+                <div className="empty-feed">
+                  <Calendar size={48} className="text-muted" />
+                  <p>No events found.</p>
+                  {(selectedCategory !== 'All' || selectedClub !== 'All') ? (
+                    <button
+                      className="btn-link"
+                      onClick={() => { setSelectedCategory('All'); setSelectedClub('All'); }}
+                    >
+                      Clear Filters
+                    </button>
+                  ) : (
+                    <span className="sub-text">Take a break! Nothing scheduled for this day.</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {loading ? (
-          <div className="loading-state">
-            <Loader className="animate-spin" size={32} />
-            <p>Loading Events...</p>
-          </div>
-        ) : (
-          <div className="feed-list">
-            {filteredEvents.length > 0 ? (
-              filteredEvents.map(event => (
-                <EventCard key={event.id} event={event} compact={true} />
-              ))
-            ) : (
-              <div className="empty-feed">
-                <Calendar size={48} className="text-muted" />
-                <p>No events found.</p>
-                {(selectedCategory !== 'All' || selectedClub !== 'All') ? (
-                  <button
-                    className="btn-link"
-                    onClick={() => { setSelectedCategory('All'); setSelectedClub('All'); }}
-                  >
-                    Clear Filters
-                  </button>
-                ) : (
-                  <span className="sub-text">Take a break! Nothing scheduled for this day.</span>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        {/* 4. Utilities Panel (Right side on Desktop) */}
+        <div className="home-sidebar">
+          <TodoList />
+        </div>
       </div>
     </div>
   );

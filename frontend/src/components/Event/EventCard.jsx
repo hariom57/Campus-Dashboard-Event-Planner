@@ -1,10 +1,33 @@
 import React, { useState } from 'react';
 import { Calendar, MapPin, Clock, Bookmark, Bell, Users, ExternalLink } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import './EventCard.css';
 
 const EventCard = ({ event, compact = false }) => {
+    const { notifications, toggleNotification } = useAuth();
     const [bookmarked, setBookmarked] = useState(false);
-    const [reminded, setReminded] = useState(false);
+
+    // Check if this event is in the global notifications array
+    const isReminded = notifications.some(n => n.id === event.id);
+
+    const handleReminder = (e) => {
+        e.stopPropagation();
+
+        // Let the global context handle the tracking
+        toggleNotification(event);
+
+        if (!isReminded) {
+            if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        new Notification("Reminder Set!", {
+                            body: `We'll remind you about ${event.title} at ${event.venue}.`,
+                        });
+                    }
+                });
+            }
+        }
+    };
 
     const categoryColors = {
         'Technical': 'tag-blue',
@@ -43,9 +66,17 @@ const EventCard = ({ event, compact = false }) => {
             <div className="event-card-image">
                 <div className="event-card-gradient" style={{ background: event.gradient }}></div>
                 <div className="event-card-overlay">
-                    <span className={`tag ${categoryColors[event.category] || 'tag-yellow'}`}>
-                        {event.category}
-                    </span>
+                    <div className="tags-container">
+                        <span className={`tag ${categoryColors[event.category] || 'tag-yellow'}`}>
+                            {event.category}
+                        </span>
+                        {/* Render Special Tags from rawCategories if they exist */}
+                        {event.rawCategories && event.rawCategories.map((cat, idx) => {
+                            if (cat === 'COGNI ASPECT') return <span key={idx} className="tag tag-red" style={{ marginLeft: '4px' }}>Cogni Required</span>;
+                            if (cat === 'PhD Support') return <span key={idx} className="tag tag-purple" style={{ marginLeft: '4px' }}>PhD</span>;
+                            return null;
+                        })}
+                    </div>
                     <div className="event-card-actions-top">
                         <button
                             className={`btn-icon event-action ${bookmarked ? 'active' : ''}`}
@@ -56,7 +87,7 @@ const EventCard = ({ event, compact = false }) => {
                         </button>
                         <button
                             className={`btn-icon event-action ${reminded ? 'active' : ''}`}
-                            onClick={() => setReminded(!reminded)}
+                            onClick={handleReminder}
                             title="Set Reminder"
                         >
                             <Bell size={16} fill={reminded ? 'currentColor' : 'none'} />
@@ -85,7 +116,7 @@ const EventCard = ({ event, compact = false }) => {
                     </div>
                     <div className="event-meta-item">
                         <Users size={14} />
-                        <span>{event.attendees} attending</span>
+                        <span>{event.attendees || 0} attending</span>
                     </div>
                 </div>
 

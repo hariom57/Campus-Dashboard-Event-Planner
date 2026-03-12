@@ -28,14 +28,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--brand-yellow);
+    color: var(--brand-blue-accent);
     font-weight: 900;
     font-size: 1.3rem;
     transition: var(--transition-base);
 }
 
 .navbar-logo:hover .logo-icon {
-    background: var(--brand-yellow);
+    background: var(--brand-blue-accent);
     color: var(--grey-900);
 }
 
@@ -84,7 +84,7 @@
 
 .nav-link.active {
     color: var(--grey-900);
-    background: var(--brand-yellow-pale);
+    background: var(--brand-blue-pale);
     font-weight: 600;
 }
 
@@ -181,7 +181,7 @@
 
 .mobile-link:hover,
 .mobile-link.active {
-    background: var(--brand-yellow-pale);
+    background: var(--brand-blue-pale);
     color: var(--grey-900);
 }
 
@@ -189,6 +189,92 @@
     height: 1px;
     background: var(--grey-200);
     margin: 0.5rem 0;
+}
+
+
+.user-profile-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-avatar-container {
+    position: relative;
+    cursor: pointer;
+}
+
+.navbar-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--brand-blue-accent);
+    object-fit: cover;
+    transition: var(--transition-fast);
+}
+
+.user-avatar-container:hover .navbar-avatar {
+    transform: scale(1.05);
+}
+
+.avatar-dropdown {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: 220px;
+    padding: 0.75rem;
+    border-radius: var(--radius-lg);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: var(--transition-base);
+}
+
+.user-avatar-container:hover .avatar-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-header {
+    padding-bottom: 0.75rem;
+}
+
+.user-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.user-email {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--grey-200);
+    margin: 0.5rem -0.75rem;
+}
+
+.dropdown-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: var(--transition-fast);
+}
+
+.dropdown-item:hover {
+    background: var(--grey-100);
+}
+
+.text-red {
+    color: var(--brand-red) !important;
 }
 
 @media (max-width: 768px) {
