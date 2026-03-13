@@ -1,21 +1,23 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import Navbar from './components/Layout/Navbar';
+import BottomNav from './components/Layout/BottomNav';
 import Home from './pages/Home';
-import MapPage from './pages/Map';
 import CalendarPage from './pages/Calendar';
 import Admin from './pages/Admin';
 import LandingPage from './pages/LandingPage';
+import AlertsPage from './pages/Alerts';
+import EventDetail from './pages/EventDetail';
+import './App.css';
 
-// A layout wrapper that includes the Navbar. 
-// Used for pages where we DO want the Navbar visible.
-const MainLayout = ({ children }) => {
+// Shell layout that wraps pages needing the bottom navigation
+const AppShell = ({ children }) => {
     return (
-        <div className="app-container">
-            <Navbar />
-            <main>
+        <div className="app-shell">
+            <main className="app-main">
                 {children}
             </main>
+            <BottomNav />
         </div>
     );
 };
@@ -25,16 +27,15 @@ function App() {
         <Router>
             <AuthProvider>
                 <Routes>
-                    {/* Public/Landing Route (No Navbar) */}
+                    {/* Public Landing Route (No Bottom Nav) */}
                     <Route path="/" element={<LandingPage />} />
-                    
-                    {/* Routes with Navbar Wrapper */}
-                    <Route path="/home" element={<MainLayout><Home /></MainLayout>} />
-                    <Route path="/map" element={<MainLayout><MapPage /></MainLayout>} />
-                    <Route path="/calendar" element={<MainLayout><CalendarPage /></MainLayout>} />
-                    
-                    {/* Admin Route (Assuming it doesn't need main navbar, or adjust as needed) */}
-                    <Route path="/admin" element={<Admin />} />
+
+                    {/* App Routes (with Bottom Nav) */}
+                    <Route path="/home" element={<AppShell><Home /></AppShell>} />
+                    <Route path="/calendar" element={<AppShell><CalendarPage /></AppShell>} />
+                    <Route path="/alerts" element={<AppShell><AlertsPage /></AppShell>} />
+                    <Route path="/admin" element={<AppShell><Admin /></AppShell>} />
+                    <Route path="/event/:eventId" element={<AppShell><EventDetail /></AppShell>} />
                 </Routes>
             </AuthProvider>
         </Router>

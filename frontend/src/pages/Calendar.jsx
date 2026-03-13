@@ -1,179 +1,208 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar as CalIcon, ChevronLeft, ChevronRight, Clock, Loader } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Bell, Filter, Clock, MapPin, Users, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import eventService from '../services/events';
 import './Calendar.css';
 
-const categoryDots = {
-    Technical: '#713364', // Purple
-    Cultural: '#e91e63', // Pinkish
-    Sports: '#ff9800', // Orange
-    Academic: '#FFD700', // Gold/Yellow
-    Fest: '#f44336', // Red
-    General: '#607d8b', // Blue-Grey
+const CATEGORY_FILTERS = ['All', 'Academic', 'Technical', 'Cultural', 'Sports', 'Fest'];
+
+const CATEGORY_COLORS = {
+    Technical: '#713364',
+    Cultural: '#e91e63',
+    Sports: '#ff9800',
+    Academic: '#8B6914',
+    Fest: '#f44336',
+    General: '#607d8b',
 };
 
-const daysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
-const firstDayOfMonth = (month, year) => new Date(year, month, 1).getDay();
-const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const formatTime = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const getDurationLabel = (mins) => {
+    if (!mins) return '';
+    if (mins < 60) return `${mins} Mins`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m ? `${h}h ${m}m` : `${h} Hour${h > 1 ? 's' : ''}`;
+};
+
+// Build a 7-day strip starting from today
+const buildWeekStrip = () => {
+    const days = [];
+    const today = new Date();
+    for (let i = 0; i < 14; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        days.push(d);
+    }
+    return days;
+};
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const CalendarPage = () => {
-    const today = new Date();
-    const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-    const [currentYear, setCurrentYear] = useState(today.getFullYear());
-    const [selectedDate, setSelectedDate] = useState(null);
-    const [calendarEvents, setCalendarEvents] = useState({});
+    const navigate = useNavigate();
+    const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [activeCategory, setActiveCategory] = useState('All');
+
+    const weekDays = useMemo(() => buildWeekStrip(), []);
 
     useEffect(() => {
-        const fetchEvents = async () => {
-            setLoading(true);
-            try {
-                const data = await eventService.getAllEvents();
-
-                // Group events by date key (YYYY-MM-DD)
-                const grouped = {};
-                data.forEach(ev => {
-                    const dt = new Date(ev.tentative_start_time);
-                    const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-                    const categoryString = ev.categories || 'General';
-                    const primaryCategory = categoryString.split(',')[0].trim();
-
-                    const formatted = {
-                        title: ev.name,
-                        category: primaryCategory,
-                        time: dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        club: ev.club_name || 'Unknown',
-                        venue: ev.location_name || 'TBD',
-                    };
-
-                    if (!grouped[key]) grouped[key] = [];
-                    grouped[key].push(formatted);
-                });
-
-                setCalendarEvents(grouped);
-            } catch (error) {
-                console.error('Failed to fetch events for calendar', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchEvents();
+        eventService.getAllEvents().then(data => {
+            setEvents(data);
+            setLoading(false);
+        }).catch(() => setLoading(false));
     }, []);
 
-    const days = daysInMonth(currentMonth, currentYear);
-    const firstDay = firstDayOfMonth(currentMonth, currentYear);
+    // Events for the selected date
+    const selectedDateStr = selectedDate.toISOString().split('T')[0];
 
-    const prevMonth = () => {
-        if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1); }
-        else setCurrentMonth(currentMonth - 1);
-    };
+    const dayEvents = useMemo(() => {
+        return events.filter(ev => {
+            const evDate = new Date(ev.tentative_start_time).toISOString().split('T')[0];
+            const matchDate = evDate === selectedDateStr;
+            const primaryCat = ev.categories ? ev.categories.split(',')[0].trim() : 'General';
+            const matchCat = activeCategory === 'All' || primaryCat === activeCategory;
+            return matchDate && matchCat;
+        }).sort((a, b) => new Date(a.tentative_start_time) - new Date(b.tentative_start_time));
+    }, [events, selectedDateStr, activeCategory]);
 
-    const nextMonth = () => {
-        if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(currentYear + 1); }
-        else setCurrentMonth(currentMonth + 1);
-    };
+    // Mark which dates have events
+    const dateDotMap = useMemo(() => {
+        const map = {};
+        events.forEach(ev => {
+            const k = new Date(ev.tentative_start_time).toISOString().split('T')[0];
+            map[k] = true;
+        });
+        return map;
+    }, [events]);
 
-    const getDateKey = (day) => {
-        const m = String(currentMonth + 1).padStart(2, '0');
-        const d = String(day).padStart(2, '0');
-        return `${currentYear}-${m}-${d}`;
-    };
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
 
-    const selectedEvents = selectedDate ? calendarEvents[selectedDate] || [] : [];
+    const formattedDate = selectedDate.toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric'
+    }).toUpperCase();
 
     return (
-        <div className="calendar-page" style={{ paddingTop: '72px' }}>
-            <div className="container">
-                <div className="map-page-header">
-                    <h1 className="page-title">
-                        <CalIcon size={28} style={{ color: 'var(--brand-purple)' }} />
-                        Event Calendar
-                    </h1>
-                    <p className="page-subtitle">Keep track of all upcoming events and important dates</p>
+        <div className="calendar-page-new">
+            {/* Header */}
+            <div className="page-header-bar">
+                <h1>Calendar</h1>
+                <div className="page-header-actions">
+                    <button className="header-icon-btn" aria-label="Search"><Search size={18} /></button>
+                    <button className="header-icon-btn" onClick={() => navigate('/alerts')} aria-label="Alerts"><Bell size={18} /></button>
                 </div>
+            </div>
 
+            {/* Month Label */}
+            <div className="cal-month-label">
+                {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </div>
+
+            {/* Week Strip */}
+            <div className="cal-week-strip">
+                {weekDays.map((d, i) => {
+                    const dStr = d.toISOString().split('T')[0];
+                    const isSelected = dStr === selectedDateStr;
+                    const isToday = dStr === todayStr;
+                    const hasDot = dateDotMap[dStr];
+                    return (
+                        <button
+                            key={i}
+                            className={`cal-day-chip ${isSelected ? 'selected' : ''} ${isToday && !isSelected ? 'today' : ''}`}
+                            onClick={() => setSelectedDate(new Date(d))}
+                        >
+                            <span className="cal-day-name-label">{DAY_NAMES[d.getDay()]}</span>
+                            <span className="cal-day-num">{d.getDate()}</span>
+                            {hasDot && <span className="cal-event-dot-marker" />}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Category Chips */}
+            <div className="cal-category-chips">
+                {CATEGORY_FILTERS.map(c => (
+                    <button
+                        key={c}
+                        className={`home-chip ${activeCategory === c ? 'active' : ''}`}
+                        onClick={() => setActiveCategory(c)}
+                    >
+                        {c}
+                    </button>
+                ))}
+            </div>
+
+            {/* Date Heading */}
+            <div className="cal-date-heading">
+                <span className="cal-date-label">{formattedDate}</span>
+                {dayEvents.length > 0 && (
+                    <span className="cal-event-count">{dayEvents.length} EVENT{dayEvents.length > 1 ? 'S' : ''}</span>
+                )}
+            </div>
+
+            {/* Timeline */}
+            <div className="cal-timeline">
                 {loading ? (
-                    <div className="loading-state" style={{ padding: '4rem', textAlign: 'center' }}>
-                        <Loader size={32} className="animate-spin" />
-                        <p>Loading events...</p>
+                    <div className="home-loading"><div className="home-spinner" /><p>Loading...</p></div>
+                ) : dayEvents.length === 0 ? (
+                    <div className="cal-empty">
+                        <p>No events on this day</p>
+                        <span>Try a different date or category</span>
                     </div>
                 ) : (
-                    <div className="calendar-layout">
-                        <div className="calendar-main card">
-                            <div className="calendar-nav">
-                                <button className="btn btn-ghost" onClick={prevMonth}><ChevronLeft size={20} /></button>
-                                <h2 className="calendar-month">{monthNames[currentMonth]} {currentYear}</h2>
-                                <button className="btn btn-ghost" onClick={nextMonth}><ChevronRight size={20} /></button>
-                            </div>
+                    dayEvents.map((ev, idx) => {
+                        const primaryCat = ev.categories ? ev.categories.split(',')[0].trim() : 'General';
+                        const catColor = CATEGORY_COLORS[primaryCat] || '#607d8b';
+                        return (
+                            <div key={ev.id} className="cal-timeline-item" onClick={() => navigate(`/event/${ev.id}`)}>
+                                {/* Time column */}
+                                <div className="cal-time-col">
+                                    <span className="cal-time">{formatTime(ev.tentative_start_time)}</span>
+                                    <div className="cal-timeline-line" />
+                                    <div className="cal-timeline-dot" style={{ background: catColor }} />
+                                </div>
 
-                            <div className="calendar-grid">
-                                {dayNames.map(d => <div key={d} className="cal-day-name">{d}</div>)}
-                                {Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`} className="cal-day empty"></div>)}
-                                {Array.from({ length: days }).map((_, i) => {
-                                    const day = i + 1;
-                                    const dateKey = getDateKey(day);
-                                    const events = calendarEvents[dateKey];
-                                    const isSelected = selectedDate === dateKey;
-                                    const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
-
-                                    return (
-                                        <button
-                                            key={day}
-                                            className={`cal-day ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''} ${events ? 'has-events' : ''}`}
-                                            onClick={() => setSelectedDate(dateKey)}
-                                        >
-                                            <span className="cal-day-number">{day}</span>
-                                            {events && (
-                                                <div className="cal-dots">
-                                                    {events.map((e, idx) => (
-                                                        <span key={idx} className="cal-dot" style={{ background: categoryDots[e.category] || '#999' }}></span>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            <div className="calendar-legend">
-                                {Object.entries(categoryDots).map(([cat, color]) => (
-                                    <div key={cat} className="legend-item">
-                                        <span className="legend-dot" style={{ background: color }}></span>
-                                        <span>{cat}</span>
+                                {/* Event card */}
+                                <div className="cal-event-card">
+                                    <div className="cal-event-cat-badge" style={{ background: `${catColor}18`, color: catColor }}>
+                                        {primaryCat}
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="calendar-sidebar">
-                            <div className="card" style={{ padding: 'var(--space-lg)' }}>
-                                <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>
-                                    {selectedDate ? `Events on ${selectedDate}` : 'Select a date'}
-                                </h3>
-                                {selectedEvents.length > 0 ? (
-                                    <div className="cal-events-list">
-                                        {selectedEvents.map((ev, i) => (
-                                            <div key={i} className="cal-event-item">
-                                                <div className="cal-event-dot" style={{ background: categoryDots[ev.category] || '#999' }}></div>
-                                                <div>
-                                                    <span className="cal-event-title">{ev.title}</span>
-                                                    <span className="cal-event-meta">
-                                                        <Clock size={12} /> {ev.time} • {ev.category} • {ev.club}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
+                                    <h4 className="cal-event-title">{ev.name}</h4>
+                                    {ev.club_name && (
+                                        <div className="cal-event-club-row">
+                                            <div className="cal-club-dot" />{ev.club_name}
+                                        </div>
+                                    )}
+                                    <div className="cal-event-foot">
+                                        {ev.location_name && (
+                                            <span><MapPin size={12} />{ev.location_name}</span>
+                                        )}
+                                        {ev.duration_minutes && (
+                                            <span><Clock size={12} />{getDurationLabel(ev.duration_minutes)}</span>
+                                        )}
                                     </div>
-                                ) : (
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                                        {selectedDate ? 'No events on this date.' : 'Click a date on the calendar to see events.'}
-                                    </p>
-                                )}
+                                    <ChevronRight size={16} className="cal-event-arrow" />
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        );
+                    })
                 )}
+            </div>
+
+            {/* Sync promo */}
+            <div className="cal-sync-card">
+                <div className="cal-sync-icon">🔗</div>
+                <div className="cal-sync-text">
+                    <strong>Stay Synced!</strong>
+                    <span>Add IITR Campus Calendar to your Google or iCal account.</span>
+                </div>
+                <button className="cal-sync-btn">Sync</button>
             </div>
         </div>
     );

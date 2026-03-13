@@ -61,8 +61,12 @@ const eventService = {
         }
     },
 
-    // Get single event by ID
+    // Get single event by ID (supports hardcoded 'hc-' events too)
     getEventById: async (id) => {
+        // Check hardcoded events first
+        const hc = hardcodedEvents.find(e => String(e.id) === String(id));
+        if (hc) return hc;
+        // Otherwise fetch from API
         const response = await api.get(`/events/${id}`);
         return response.data.events[0]; // Backend returns array
     },

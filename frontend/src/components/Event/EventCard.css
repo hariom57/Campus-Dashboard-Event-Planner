@@ -1,241 +1,143 @@
-/* Base Card Styles */
-.event-card {
-    border-radius: var(--radius-lg);
-    overflow: hidden;
+.event-card-new {
     background: white;
-    transition: transform 0.2s, box-shadow 0.2s;
-    height: 100%;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid var(--grey-100);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.event-card-new:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 28px rgba(113,51,100,0.15);
+}
+
+.event-card-new:active {
+    transform: scale(0.98);
+}
+
+/* Banner */
+.event-card-banner {
+    height: 140px;
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    padding: 12px;
+}
+
+.event-category-badge {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    backdrop-filter: blur(4px);
+}
+
+/* Body */
+.event-card-body {
+    padding: 14px 16px 16px;
     display: flex;
     flex-direction: column;
+    gap: 8px;
 }
 
-.event-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-}
-
-/* Image Section */
-.event-card-image {
-    height: 160px;
-    position: relative;
+.event-card-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--brand-black);
+    margin: 0;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
-.event-card-gradient {
-    width: 100%;
-    height: 100%;
-    transition: transform 0.3s;
-}
-
-.event-card:hover .event-card-gradient {
-    transform: scale(1.05);
-}
-
-.event-card-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    padding: var(--space-md);
+/* Club Row */
+.event-card-club-row {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
+    gap: 8px;
 }
 
-.event-card-actions-top {
-    display: flex;
-    gap: var(--space-sm);
-}
-
-.event-action {
-    background: rgba(255, 255, 255, 0.9);
+.event-club-avatar {
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
-    width: 32px;
-    height: 32px;
+    background: var(--brand-purple);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 900;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--grey-600);
+    flex-shrink: 0;
 }
 
-.event-action:hover {
-    background: white;
-    color: var(--brand-purple);
-}
-
-.event-action.active {
-    color: var(--brand-purple);
-    background: white;
-}
-
-.live-badge {
-    position: absolute;
-    bottom: var(--space-md);
-    left: var(--space-md);
-    background: var(--brand-red);
-    color: white;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.7;
-    }
-
-    100% {
-        opacity: 1;
-    }
-}
-
-/* Body Section */
-.event-card-body {
-    padding: var(--space-lg);
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.event-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--grey-900);
-    margin-bottom: var(--space-xs);
-    line-height: 1.4;
-}
-
-.event-club {
-    font-size: 0.85rem;
-    color: var(--brand-purple);
+.event-club-name {
+    font-size: 0.82rem;
     font-weight: 600;
-    margin-bottom: var(--space-md);
+    color: var(--brand-purple);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.event-meta {
+/* Meta Row */
+.event-card-meta {
     display: flex;
+    align-items: center;
+    gap: 12px;
     flex-wrap: wrap;
-    gap: var(--space-md);
-    margin-bottom: var(--space-lg);
 }
 
 .event-meta-item {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
+    gap: 4px;
+    font-size: 0.78rem;
+    color: var(--grey-500);
+    font-weight: 500;
+}
+
+.event-meta-item svg {
+    flex-shrink: 0;
+}
+
+/* RSVP Button */
+.event-rsvp-btn {
+    align-self: flex-end;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--brand-purple);
+    color: white;
+    border: none;
+    border-radius: 22px;
+    padding: 8px 18px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+    margin-top: 6px;
+}
+
+.event-rsvp-btn:hover {
+    background: var(--brand-purple-dark);
+    transform: translateY(-1px);
+}
+
+.event-rsvp-btn.notified {
+    background: var(--grey-100);
     color: var(--grey-600);
 }
 
-.event-card-footer {
-    margin-top: auto;
-    display: flex;
-    gap: var(--space-sm);
-}
-
-.event-rsvp-btn {
-    flex: 1;
-}
-
-
-/* === COMPACT MODE STYLES === */
-.event-card.compact {
-    flex-direction: row;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    height: auto;
-    border-left: 4px solid transparent;
-    /* Highlight strip placeholder */
-}
-
-/* Time Column */
-.compact-time {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-width: 60px;
-    margin-right: 1rem;
-    position: relative;
-}
-
-.time-text {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--grey-800);
-}
-
-.timeline-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-top: 4px;
-}
-
-/* Content Column */
-.compact-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.compact-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--grey-900);
-    margin-bottom: 2px;
-}
-
-.compact-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.8rem;
-    color: var(--grey-500);
-}
-
-.compact-club {
-    color: var(--brand-purple);
-    font-weight: 600;
-}
-
-.compact-venue {
-    display: flex;
-    align-items: center;
-}
-
-.separator {
-    color: var(--grey-300);
-}
-
-/* Action Column */
-.compact-action {
-    margin-left: 0.5rem;
-}
-
-.btn-icon-sm {
-    width: 32px;
-    height: 32px;
-    border-radius: full;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--grey-400);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: color 0.2s;
-}
-
-.btn-icon-sm:hover {
-    color: var(--brand-purple);
-    background: var(--brand-purple-pale);
-    border-radius: 50%;
+.event-rsvp-btn.notified:hover {
+    background: #fce4ec;
+    color: #c62828;
 }

@@ -1,134 +1,110 @@
-import React, { useState } from 'react';
-import { Calendar, MapPin, Clock, Bookmark, Bell, Users, ExternalLink } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Clock, MapPin, Bell, BellOff, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './EventCard.css';
 
-const EventCard = ({ event, compact = false }) => {
+// Deterministic gradient per event id/name
+const GRADIENTS = [
+    'linear-gradient(145deg, #713364 0%, #4a1d3f 100%)',
+    'linear-gradient(145deg, #8e4b7e 0%, #713364 100%)',
+    'linear-gradient(145deg, #4a1d3f 0%, #1a1518 100%)',
+    'linear-gradient(145deg, #5c2851 0%, #713364 100%)',
+    'linear-gradient(145deg, #713364 0%, #FFD700 100%)',
+];
+
+const CATEGORY_COLORS = {
+    Technical: '#713364',
+    Cultural: '#e91e63',
+    Sports: '#ff9800',
+    Academic: '#ccac00',
+    Fest: '#f44336',
+    General: '#607d8b',
+    Competition: '#9c27b0',
+    Workshop: '#00897b',
+};
+
+const formatTime = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' });
+};
+
+const EventCard = ({ event }) => {
+    const navigate = useNavigate();
     const { notifications, toggleNotification } = useAuth();
-    const [bookmarked, setBookmarked] = useState(false);
 
-    // Check if this event is in the global notifications array
-    const isReminded = notifications.some(n => n.id === event.id);
+    const gradient = useMemo(() => {
+        const idx = (event.id || 0) % GRADIENTS.length;
+        return GRADIENTS[idx];
+    }, [event.id]);
 
-    const handleReminder = (e) => {
+    const primaryCategory = event.categories
+        ? event.categories.split(',')[0].trim()
+        : 'General';
+
+    const categoryColor = CATEGORY_COLORS[primaryCategory] || '#607d8b';
+
+    const isNotified = notifications?.some(n => n.id === event.id);
+
+    const handleRsvp = (e) => {
         e.stopPropagation();
-
-        // Let the global context handle the tracking
-        toggleNotification(event);
-
-        if (!isReminded) {
-            if ("Notification" in window) {
-                Notification.requestPermission().then(permission => {
-                    if (permission === "granted") {
-                        new Notification("Reminder Set!", {
-                            body: `We'll remind you about ${event.title} at ${event.venue}.`,
-                        });
-                    }
-                });
-            }
-        }
+        toggleNotification({
+            id: event.id,
+            title: event.name,
+            time: formatTime(event.tentative_start_time),
+            date: formatDate(event.tentative_start_time),
+        });
     };
-
-    const categoryColors = {
-        'Technical': 'tag-blue',
-        'Cultural': 'tag-purple',
-        'Sports': 'tag-green',
-        'Academic': 'tag-yellow',
-        'Fest': 'tag-red',
-    };
-
-    if (compact) {
-        return (
-            <div className="event-card compact card">
-                <div className="compact-time">
-                    <span className="time-text">{event.time}</span>
-                    <div className="timeline-dot" style={{ background: event.gradient }}></div>
-                </div>
-                <div className="compact-content">
-                    <h3 className="compact-title">{event.title}</h3>
-                    <div className="compact-meta">
-                        <span className="compact-club">{event.club}</span>
-                        <span className="separator">•</span>
-                        <span className="compact-venue"><MapPin size={12} style={{ marginRight: '4px' }} />{event.venue}</span>
-                    </div>
-                </div>
-                <div className="compact-action">
-                    <button className="btn-icon-sm" onClick={() => setBookmarked(!bookmarked)}>
-                        <Bookmark size={16} fill={bookmarked ? 'currentColor' : 'none'} />
-                    </button>
-                </div>
-            </div>
-        );
-    }
 
     return (
-        <div className="event-card card">
-            <div className="event-card-image">
-                <div className="event-card-gradient" style={{ background: event.gradient }}></div>
-                <div className="event-card-overlay">
-                    <div className="tags-container">
-                        <span className={`tag ${categoryColors[event.category] || 'tag-yellow'}`}>
-                            {event.category}
-                        </span>
-                        {/* Render Special Tags from rawCategories if they exist */}
-                        {event.rawCategories && event.rawCategories.map((cat, idx) => {
-                            if (cat === 'COGNI ASPECT') return <span key={idx} className="tag tag-red" style={{ marginLeft: '4px' }}>Cogni Required</span>;
-                            if (cat === 'PhD Support') return <span key={idx} className="tag tag-purple" style={{ marginLeft: '4px' }}>PhD</span>;
-                            return null;
-                        })}
-                    </div>
-                    <div className="event-card-actions-top">
-                        <button
-                            className={`btn-icon event-action ${bookmarked ? 'active' : ''}`}
-                            onClick={() => setBookmarked(!bookmarked)}
-                            title="Bookmark"
-                        >
-                            <Bookmark size={16} fill={bookmarked ? 'currentColor' : 'none'} />
-                        </button>
-                        <button
-                            className={`btn-icon event-action ${reminded ? 'active' : ''}`}
-                            onClick={handleReminder}
-                            title="Set Reminder"
-                        >
-                            <Bell size={16} fill={reminded ? 'currentColor' : 'none'} />
-                        </button>
-                    </div>
-                </div>
-                {event.isLive && <div className="live-badge">● LIVE</div>}
+        <div className="event-card-new" onClick={() => navigate(`/event/${event.id}`)}>
+            {/* Banner */}
+            <div className="event-card-banner" style={{ background: gradient }}>
+                <span className="event-category-badge" style={{ background: categoryColor }}>
+                    {primaryCategory}
+                </span>
             </div>
 
+            {/* Body */}
             <div className="event-card-body">
-                <h3 className="event-title">{event.title}</h3>
-                <p className="event-club">{event.club}</p>
+                <h3 className="event-card-title">{event.name}</h3>
 
-                <div className="event-meta">
-                    <div className="event-meta-item">
-                        <Calendar size={14} />
-                        <span>{event.date}</span>
+                <div className="event-card-club-row">
+                    <div className="event-club-avatar">
+                        {(event.club_name || 'C').charAt(0).toUpperCase()}
                     </div>
-                    <div className="event-meta-item">
-                        <Clock size={14} />
-                        <span>{event.time}</span>
-                    </div>
-                    <div className="event-meta-item">
-                        <MapPin size={14} />
-                        <span>{event.venue}</span>
-                    </div>
-                    <div className="event-meta-item">
-                        <Users size={14} />
-                        <span>{event.attendees || 0} attending</span>
-                    </div>
+                    <span className="event-club-name">{event.club_name || 'Campus Event'}</span>
                 </div>
 
-                <div className="event-card-footer">
-                    <button className="btn btn-yellow event-rsvp-btn">
-                        RSVP Now
-                    </button>
-                    <button className="btn btn-ghost">
-                        <ExternalLink size={16} />
-                        Details
-                    </button>
+                <div className="event-card-meta">
+                    <span className="event-meta-item">
+                        <Clock size={13} />
+                        {formatTime(event.tentative_start_time)}
+                    </span>
+                    {event.location_name && (
+                        <span className="event-meta-item">
+                            <MapPin size={13} />
+                            {event.location_name}
+                        </span>
+                    )}
                 </div>
+
+                <button
+                    className={`event-rsvp-btn ${isNotified ? 'notified' : ''}`}
+                    onClick={handleRsvp}
+                    title={isNotified ? 'Remove reminder' : 'Set reminder / RSVP'}
+                >
+                    {isNotified ? (
+                        <><BellOff size={14} /> Reminded</>
+                    ) : (
+                        <><Plus size={14} /> RSVP</>
+                    )}
+                </button>
             </div>
         </div>
     );
