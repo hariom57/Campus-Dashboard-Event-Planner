@@ -20,6 +20,7 @@ router.get('/login', async (req, res) => {
 // route to get the access token and refresh token
 // with help of access token, get the user data and store it in database if it doesn't exist. If it exists, update the user data in database. Then create a JWT with user info and store it in secure HTTP-only cookie
 router.get('/token', async (req, res) => {
+    console.log(`[AUTH] 🔄 /token callback reached. Code: ${req.query.code ? 'PRESENT' : 'MISSING'}, State: ${req.query.state}`);
     try {
         const { code, state } = req.query;
         // send a POST request to token_URL to get the access token
@@ -46,6 +47,11 @@ router.get('/token', async (req, res) => {
 
         const userData = userDataResponse.data;
         console.log(`[AUTH] 👤 Fetched user data for: ${userData.person.fullName} (ID: ${userData.userId})`);
+        console.log(`[AUTH] 📦 User Data Structure Check:`, { 
+            userId: !!userData.userId, 
+            fullName: !!userData.person?.fullName, 
+            email: !!userData.contactInformation?.instituteWebmailAddress 
+        });
 
         // Insert or update user in database
         await sql`
@@ -110,6 +116,7 @@ router.get('/token', async (req, res) => {
         console.log(`✅ JWT created and stored for user ${userData.userId}`);
 
         // Redirect back to the frontend app (cookie is already set above)
+        console.log(`[AUTH] ➡️ Redirecting user to frontend...`);
         return res.redirect('http://localhost:5173');
     } catch (error) {
         console.log(error);
