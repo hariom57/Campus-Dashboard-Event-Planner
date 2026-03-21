@@ -17,6 +17,12 @@ const authService = {
         }
     },
 
+    // Check admin privilege from backend source of truth
+    getIsAdmin: async () => {
+        const response = await api.get('/admins/is-admin');
+        return response.data?.is_admin === true;
+    },
+
     // Logout
     logout: async () => {
         try {

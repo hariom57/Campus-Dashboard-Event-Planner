@@ -19,7 +19,8 @@ export const AuthProvider = ({ children }) => {
         const checkAuth = async () => {
             try {
                 const userData = await authService.getCurrentUser();
-                setUser(userData);
+                const isAdmin = await authService.getIsAdmin();
+                setUser({ ...userData, isAdmin });
             } catch (error) {
                 // Expected state when no session cookie is present
                 setUser(null);
