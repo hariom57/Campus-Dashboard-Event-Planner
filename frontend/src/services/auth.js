@@ -23,10 +23,16 @@ const authService = {
         return response.data?.is_admin === true;
     },
 
+    // Fetch clubs managed by logged-in club admin
+    getManagedClubs: async () => {
+        const response = await api.get('/club-admins/clubs');
+        return response.data?.clubs || [];
+    },
+
     // Logout
     logout: async () => {
         try {
-            await api.get('/oauth/logout');
+            await api.post('/oauth/logout');
             // Redirect to home or login page after successful logout
             window.location.href = '/';
         } catch (error) {

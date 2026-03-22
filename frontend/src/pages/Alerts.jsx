@@ -64,7 +64,7 @@ const AlertsPage = () => {
                 <div className="alerts-profile-card">
                     {user.display_picture ? (
                         <img
-                            src={user.display_picture}
+                            src={"https://channeli.in" + user.display_picture}
                             alt={user.full_name}
                             className="alerts-avatar"
                         />
