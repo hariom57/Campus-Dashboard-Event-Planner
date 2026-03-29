@@ -19,7 +19,18 @@ export const AuthProvider = ({ children }) => {
         const checkAuth = async () => {
             try {
                 const userData = await authService.getCurrentUser();
-                setUser(userData);
+                const isAdmin = await authService.getIsAdmin();
+                let managedClubs = [];
+
+                if (isAdmin) {
+                    try {
+                        managedClubs = await authService.getManagedClubs();
+                    } catch (clubsError) {
+                        console.error('Failed to fetch managed clubs', clubsError);
+                    }
+                }
+
+                setUser({ ...userData, isAdmin, managedClubs });
             } catch (error) {
                 // Expected state when no session cookie is present
                 setUser(null);

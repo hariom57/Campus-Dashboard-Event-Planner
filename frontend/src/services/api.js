@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Backend URL from environment variable (VITE_API_URL must be set in .env.local)
 // Falls back to localhost:8081 for local development
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8081';
 
 const api = axios.create({
     baseURL: API_URL,
