@@ -1,0 +1,155 @@
+.map-page {
+    padding-top: 80px;
+    min-height: 100vh;
+    background-color: var(--bg-secondary);
+    padding-bottom: 4rem;
+}
+
+.map-page-header {
+    margin-bottom: 2rem;
+}
+
+.map-page-header .page-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.8rem;
+    color: var(--grey-900);
+    margin: 0 0 0.5rem 0;
+}
+
+.text-brand {
+    color: var(--brand-purple);
+    font-weight: 800;
+}
+
+.page-subtitle {
+    color: var(--grey-600);
+    margin: 0;
+}
+
+.map-controls {
+    margin-bottom: 2rem;
+}
+
+.search-box {
+    position: relative;
+    max-width: 500px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--grey-400);
+}
+
+.search-box input {
+    width: 100%;
+    padding: 12px 12px 12px 40px;
+    border-radius: 12px;
+    border: 1px solid var(--grey-300);
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.search-box input:focus {
+    border-color: var(--brand-purple);
+    box-shadow: 0 0 0 3px rgba(113, 51, 100, 0.1);
+    outline: none;
+}
+
+.venues-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.venue-card {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--grey-200);
+    padding: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.venue-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.venue-icon {
+    background: var(--brand-purple-pale);
+    padding: 10px;
+    border-radius: 50%;
+    color: var(--brand-purple);
+    flex-shrink: 0;
+}
+
+.venue-info {
+    flex: 1;
+}
+
+.venue-info h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    color: var(--grey-900);
+}
+
+.venue-desc {
+    font-size: 0.9rem;
+    color: var(--grey-600);
+    margin: 0 0 1rem 0;
+    line-height: 1.4;
+}
+
+.venue-actions {
+    display: flex;
+    align-items: center;
+}
+
+.btn-outline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--grey-300);
+    border-radius: 6px;
+    background: white;
+    font-size: 0.85rem;
+    color: var(--grey-700);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-outline:hover {
+    background: var(--bg-primary);
+    border-color: var(--grey-400);
+}
+
+.no-loc-text {
+    font-size: 0.8rem;
+    color: var(--grey-400);
+    font-style: italic;
+}
+
+.loading-state,
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--grey-500);
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}

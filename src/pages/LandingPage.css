@@ -1,0 +1,237 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
+
+.landing-page {
+    min-height: 100vh;
+    max-width: 540px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    padding: 0 28px;
+    font-family: 'Roboto', sans-serif;
+}
+
+.landing-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px 0 24px;
+    gap: 36px;
+}
+
+/* Logo Area */
+.landing-logo-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 32px;
+}
+
+.landing-brand-logo {
+    object-fit: contain;
+    /* filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.05)); */
+    /* transition: transform 0.3s ease; */
+}
+
+.landing-brand-logo.iitr {
+    justify-content: center;
+    height: 20vh;
+    border-radius: 60%;
+}
+
+.landing-brand-logo.tinkering {
+    height: 64px;
+}
+
+/* Hero Text */
+.landing-hero {
+    text-align: center;
+}
+
+.landing-headline {
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: var(--brand-black);
+    line-height: 1.1;
+    letter-spacing: -0.04em;
+    margin: 0 0 16px;
+}
+
+.landing-subtext {
+    font-size: 0.95rem;
+    color: var(--grey-500);
+    line-height: 1.6;
+    margin: 0;
+    max-width: 280px;
+    margin: 0 auto;
+}
+
+/* Login Buttons */
+.landing-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.landing-btn-student,
+.landing-btn-admin {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 16px 18px;
+    border-radius: 16px;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.landing-btn-student {
+    background: var(--brand-purple);
+    box-shadow: 0 6px 24px rgba(113, 51, 100, 0.3);
+}
+
+.landing-btn-student:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(113, 51, 100, 0.35);
+}
+
+.landing-btn-admin {
+    background: white;
+    border: 1.5px solid var(--grey-200);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.landing-btn-admin:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+    border-color: var(--brand-purple);
+}
+
+.landing-btn-icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.landing-btn-student .landing-btn-icon-wrap {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.landing-btn-admin .landing-btn-icon-wrap {
+    background: var(--brand-purple-pale);
+    color: var(--brand-purple);
+}
+
+.landing-btn-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.landing-btn-title {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
+.landing-btn-student .landing-btn-title {
+    color: white;
+}
+
+.landing-btn-admin .landing-btn-title {
+    color: var(--brand-purple);
+}
+
+.landing-btn-subtitle {
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.landing-btn-student .landing-btn-subtitle {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.landing-btn-admin .landing-btn-subtitle {
+    color: var(--grey-500);
+}
+
+.landing-btn-arrow {
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.landing-btn-student .landing-btn-arrow {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.landing-btn-admin .landing-btn-arrow {
+    color: var(--grey-400);
+}
+
+.landing-help-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--grey-500);
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 8px;
+    transition: color 0.2s;
+    font-family: 'Roboto', sans-serif;
+}
+
+.landing-help-btn:hover {
+    color: var(--brand-purple);
+}
+
+/* Footer */
+.landing-footer {
+    padding: 24px 0 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.landing-footer-logos {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+
+.footer-tl-logo {
+    height: 32px;
+    object-fit: contain;
+    opacity: 0.6;
+    transition: all 0.3s ease;
+}
+
+.footer-tl-logo:hover {
+    opacity: 1;
+    filter: none;
+}
+
+.landing-footer-text {
+    font-size: 0.8rem;
+    color: var(--grey-400);
+    margin: 0;
+}
+
+.heart {
+    color: var(--red);
+}
