@@ -7,7 +7,7 @@ The frontend is a React application built with Vite, designed to provide a dynam
 ## Live Links
 
 - **Frontend (This App):** [https://campus-dashboard-event-planner.vercel.app/](https://campus-dashboard-event-planner.vercel.app/)
-- **Backend API:** [https://campus-event-planner-backend.vercel.app/](https://campus-event-planner-backend.vercel.app/)
+- **Backend API:** [https://campus-event-planner-backend.onrender.com/](https://campus-event-planner-backend.onrender.com/)
 
 ## Backend Infrastructure
 

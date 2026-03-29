@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
       host: true,
       proxy: {
         '/api': {
-          target: env.VITE_PROXY_TARGET || 'https://campus-event-planner-backend.vercel.app',
+          target: env.VITE_PROXY_TARGET || 'https://campus-event-planner-backend.onrender.com',
           changeOrigin: true,
           headers: {
             Origin: 'https://campus-dashboard-event-planner.vercel.app/'
