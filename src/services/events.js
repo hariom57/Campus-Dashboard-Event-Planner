@@ -1,74 +1,36 @@
 import api from './api';
 
-// Hardcoded Academic & External Events as requested by user
-const hardcodedEvents = [
-    {
-        id: 'hc-1',
-        name: 'Mid-Term Examinations (MTE)',
-        tentative_start_time: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(),
-        duration_minutes: 1440 * 7, // 7 days
-        description: 'Autumn Semester Mid-Term Examinations.',
-        club_name: 'Academic',
-        location_name: 'Campus Wide',
-        categories: 'Academic'
-    },
-    {
-        id: 'hc-2',
-        name: 'End-Term Examinations (ETE)',
-        tentative_start_time: new Date(new Date().setDate(new Date().getDate() + 45)).toISOString(),
-        duration_minutes: 1440 * 14, // 14 days
-        description: 'Autumn Semester End-Term Examinations.',
-        club_name: 'Academic',
-        location_name: 'Campus Wide',
-        categories: 'Academic'
-    },
-    {
-        id: 'hc-3',
-        name: 'Cognizance Tech Fest',
-        tentative_start_time: new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
-        duration_minutes: 1440 * 3,
-        description: 'Annual Technical Festival. External Audience allowed.',
-        club_name: 'Cognizance',
-        location_name: 'MAC & LHC',
-        categories: 'Fest, COGNI ASPECT'
-    },
-    {
-        id: 'hc-4',
-        name: 'PhD Research Symposium',
-        tentative_start_time: new Date(new Date().setDate(new Date().getDate() + 8)).toISOString(),
-        duration_minutes: 360,
-        description: 'Research presentations by doctoral candidates.',
-        club_name: 'Research Council',
-        location_name: 'Senate Hall',
-        categories: 'Academic, PhD Support'
-    }
-];
+/**
+ * Event Service handles fetching and managing dynamic club events from the backend.
+ * Official academic events are now handled via the separate AcademicCalendarService.
+ */
 
 const eventService = {
-    // Get all events
+    // Get all vibrant dynamic events from the DB
     getAllEvents: async () => {
         try {
             const response = await api.get('/events/all');
-            const dbEvents = response.data.events || [];
-            // Combine DB events with hardcoded academic events
-            return [...dbEvents, ...hardcodedEvents].sort((a, b) =>
-                new Date(a.tentative_start_time) - new Date(b.tentative_start_time)
-            );
+            return response.data.events || [];
         } catch (error) {
-            console.error("Error fetching all events:", error);
-            // If backend fails, at least return the hardcoded academic calendar
-            return hardcodedEvents;
+            console.error("Error fetching events from backend:", error);
+            // Return empty if backend fails, official academic dates are served separately
+            return [];
         }
     },
 
-    // Get single event by ID (supports hardcoded 'hc-' events too)
+    // Get single event by ID
     getEventById: async (id) => {
-        // Check hardcoded events first
-        const hc = hardcodedEvents.find(e => String(e.id) === String(id));
-        if (hc) return hc;
-        // Otherwise fetch from API
-        const response = await api.get(`/events/${id}`);
-        return response.data.events[0]; // Backend returns array
+        try {
+            const response = await api.get(`/events/${id}`);
+            // Check if backend returns array
+            const ev = response.data.events && response.data.events.length > 0
+                ? response.data.events[0]
+                : (response.data.event || null);
+            return ev;
+        } catch (error) {
+            console.error(`Error fetching event ${id}:`, error);
+            return null;
+        }
     },
 
     // Create new event

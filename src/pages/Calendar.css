@@ -32,13 +32,194 @@
 
 
 
-/* Month label */
+/* Combined View Header */
+.cal-view-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px 2px;
+}
+
 .cal-month-label {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 800;
     color: var(--brand-black);
-    padding: 12px 20px 2px;
+    padding: 0; /* Reset since it's in a flex row now */
     letter-spacing: -0.02em;
+}
+
+.cal-month-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cal-month-nav button {
+    background: white;
+    border: 1px solid var(--grey-200);
+    border-radius: 8px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--grey-600);
+}
+
+.cal-today-btn {
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 6px 12px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--brand-purple) !important;
+    border-color: var(--brand-purple-pale) !important;
+    background: var(--brand-purple-pale) !important;
+}
+
+/* Monthly Grid */
+.cal-grid-container {
+    padding: 10px 16px;
+}
+
+.cal-grid-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.cal-grid-weekdays span {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--grey-400);
+    text-transform: uppercase;
+}
+
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    background: var(--grey-200);
+    border: 1px solid var(--grey-200);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.cal-grid-day {
+    aspect-ratio: 1;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    cursor: pointer;
+    position: relative;
+}
+
+.cal-grid-day.other-month {
+    background: var(--grey-50);
+}
+
+.cal-grid-day.other-month .cal-grid-date {
+    color: var(--grey-300);
+}
+
+.cal-grid-date {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--brand-black);
+}
+
+.cal-grid-day.selected {
+    background: var(--brand-black);
+}
+
+.cal-grid-day.selected .cal-grid-date {
+    color: white;
+}
+
+.cal-grid-day.today:not(.selected) {
+    background: var(--brand-purple-pale);
+}
+
+.cal-grid-day.today:not(.selected) .cal-grid-date {
+    color: var(--brand-purple);
+}
+
+/* Holidays Highlight */
+.cal-grid-day.holiday:not(.selected) {
+    background: #ecfdf5; /* Emerald 50-ish */
+}
+
+.cal-grid-day.holiday .cal-grid-date {
+    color: #059669; /* Emerald 600 */
+}
+
+.cal-grid-day.holiday.other-month {
+    opacity: 0.5;
+}
+
+.cal-grid-day.holiday.selected {
+    background: #059669;
+}
+
+.cal-grid-day.holiday.selected .cal-grid-date {
+    color: white;
+}
+
+.cal-grid-day.holiday .cal-grid-indicators,
+.cal-grid-day.exam .cal-grid-indicators {
+    display: none;
+}
+
+/* Exams Highlight - Solid Bright Red */
+.cal-grid-day.exam:not(.selected) {
+    background: #fee2e2; /* light red-ish background if not full solid */
+}
+
+/* User asked for SOLID BRIGHT RED - let's make it stand out */
+.cal-grid-day.exam {
+    background: #ef4444 !important;
+}
+
+.cal-grid-day.exam .cal-grid-date {
+    color: white !important;
+}
+
+.cal-grid-day.exam.other-month {
+    opacity: 0.6;
+}
+
+.cal-grid-day.exam.selected {
+    background: #b91c1c !important; /* Deeper red when selected */
+}
+
+.cal-grid-indicators {
+    display: flex;
+    gap: 2px;
+    margin-top: 2px;
+    height: 4px;
+    justify-content: center;
+}
+
+.cal-grid-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+}
+
+.cal-grid-more {
+    font-size: 0.5rem;
+    font-weight: 900;
+    color: var(--grey-400);
+    line-height: 4px;
+}
+
+.header-icon-btn.active {
+    background: var(--brand-purple-pale);
+    color: var(--brand-purple);
 }
 
 /* Week Strip */
@@ -363,4 +544,46 @@
     border-color: var(--brand-purple);
     background: var(--brand-purple-pale);
     color: var(--brand-purple);
+}
+
+/* Metrics Section */
+.cal-metrics-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 0 16px 12px;
+}
+
+.cal-metric-card {
+    background: white;
+    border-radius: 18px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--grey-100);
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cal-metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.cal-metric-val {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--brand-purple);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.cal-metric-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--grey-400);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
