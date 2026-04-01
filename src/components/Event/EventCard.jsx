@@ -17,14 +17,17 @@ const CATEGORY_COLORS = {
     Technical: '#713364',
     Cultural: '#e91e63',
     Sports: '#ff9800',
-    Academic: '#ccac00',
+    Academic: '#8B6914',
     Fest: '#f44336',
+    Holiday: '#2e7d32',
+    Exam: '#c62828',
+    'Timetable Reschedule': '#d84315',
     General: '#607d8b',
-    Competition: '#9c27b0',
-    Workshop: '#00897b',
 };
 
 const formatTime = (dateStr) => {
+    // Check if it's an "All Day" event by time suffix
+    if (dateStr.includes('T00:00:00')) return 'ALL DAY';
     const d = new Date(dateStr);
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
@@ -38,8 +41,11 @@ const EventCard = ({ event }) => {
     const navigate = useNavigate();
     const { notifications, toggleNotification } = useAuth();
 
+    const isAcademic = event.isAcademicCalendar;
+
     const gradient = useMemo(() => {
-        const idx = (event.id || 0) % GRADIENTS.length;
+        const idVal = typeof event.id === 'string' ? event.id.length : (event.id || 0);
+        const idx = idVal % GRADIENTS.length;
         return GRADIENTS[idx];
     }, [event.id]);
 
@@ -62,20 +68,35 @@ const EventCard = ({ event }) => {
     };
 
     return (
-        <div className="event-card-new" onClick={() => navigate(`/event/${event.id}`)}>
-            {/* Banner */}
-            <div className="event-card-banner" style={{ background: gradient }}>
-                <span className="event-category-badge" style={{ background: categoryColor }}>
-                    {primaryCategory}
-                </span>
-            </div>
+        <div 
+            className={`event-card-new ${isAcademic ? 'academic-card' : ''}`} 
+            onClick={() => !isAcademic && navigate(`/event/${event.id}`)}
+            style={isAcademic ? { cursor: 'default' } : {}}
+        >
+            {/* Banner - Only for non-academic events */}
+            {!isAcademic && (
+                <div className="event-card-banner" style={{ background: gradient }}>
+                    <span className="event-category-badge" style={{ background: categoryColor }}>
+                        {primaryCategory}
+                    </span>
+                </div>
+            )}
 
             {/* Body */}
             <div className="event-card-body">
+                {/* Slim header for academic cards to show category and color code */}
+                {isAcademic && (
+                    <div className="academic-card-header">
+                        <span className="academic-badge" style={{ background: `${categoryColor}15`, color: categoryColor, borderColor: categoryColor }}>
+                            {primaryCategory}
+                        </span>
+                    </div>
+                )}
+
                 <h3 className="event-card-title">{event.name}</h3>
 
                 <div className="event-card-club-row">
-                    <div className="event-club-avatar">
+                    <div className="event-club-avatar" style={isAcademic ? { background: categoryColor, color: 'white' } : {}}>
                         {(event.club_name || 'C').charAt(0).toUpperCase()}
                     </div>
                     <span className="event-club-name">{event.club_name || 'Campus Event'}</span>
@@ -84,7 +105,7 @@ const EventCard = ({ event }) => {
                 <div className="event-card-meta">
                     <span className="event-meta-item">
                         <Clock size={13} />
-                        {formatTime(event.tentative_start_time)}
+                        {event.isAllDay ? 'ALL DAY' : formatTime(event.tentative_start_time)}
                     </span>
                     {event.location_name && (
                         <span className="event-meta-item">
@@ -94,17 +115,20 @@ const EventCard = ({ event }) => {
                     )}
                 </div>
 
-                <button
-                    className={`event-rsvp-btn ${isNotified ? 'notified' : ''}`}
-                    onClick={handleRsvp}
-                    title={isNotified ? 'Remove reminder' : 'Set reminder / RSVP'}
-                >
-                    {isNotified ? (
-                        <><BellOff size={14} /> Reminded</>
-                    ) : (
-                        <><Plus size={14} /> RSVP</>
-                    )}
-                </button>
+                {/* Hide RSVP for academic calendar events */}
+                {!isAcademic && (
+                    <button
+                        className={`event-rsvp-btn ${isNotified ? 'notified' : ''}`}
+                        onClick={handleRsvp}
+                        title={isNotified ? 'Remove reminder' : 'Set reminder / RSVP'}
+                    >
+                        {isNotified ? (
+                            <><BellOff size={14} /> Reminded</>
+                        ) : (
+                            <><Plus size={14} /> RSVP</>
+                        )}
+                    </button>
+                )}
             </div>
         </div>
     );

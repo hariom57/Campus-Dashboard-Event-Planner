@@ -5,7 +5,7 @@ import eventService from '../services/events';
 import academicCalendarService from '../services/academicCalendar';
 import './Calendar.css';
 
-const CATEGORY_FILTERS = ['All', 'Academic', 'Exam', 'Holiday', 'Working Saturday', 'Technical', 'Cultural', 'Sports', 'Fest'];
+const CATEGORY_FILTERS = ['All', 'Academic', 'Exam', 'Holiday', 'Timetable Reschedule', 'Technical', 'Cultural', 'Sports', 'Fest'];
 
 const CATEGORY_COLORS = {
     Technical: '#713364',
@@ -15,7 +15,7 @@ const CATEGORY_COLORS = {
     Fest: '#f44336',
     Holiday: '#2e7d32', // Green for holidays
     Exam: '#c62828',    // Red for exams
-    'Working Saturday': '#d84315', // Orange/Deep for working days
+    'Timetable Reschedule': '#d84315', // Orange/Deep for rescheduled days
     General: '#607d8b',
 };
 
@@ -268,10 +268,10 @@ const CalendarPage = () => {
                             const isToday = dStr === todayStr;
                             const isCurrentMonth = d.getMonth() === viewDate.getMonth();
                             const dayCats = Array.from(monthEventMap[dStr] || []);
-                            const isWorkingSat = dayCats.includes('Working Saturday');
-                            const isWeekend = d.getDay() === 0 || (d.getDay() === 6 && !isWorkingSat);
-                            const isHoliday = dayCats.includes('Holiday') || isWeekend;
-                            const isExam = dayCats.includes('Exam');
+                             const isRescheduled = dayCats.includes('Timetable Reschedule');
+                             const isWeekend = d.getDay() === 0 || (d.getDay() === 6 && !isRescheduled);
+                             const isHoliday = dayCats.includes('Holiday') || isWeekend;
+                             const isExam = dayCats.includes('Exam');
 
                             return (
                                 <div 
@@ -375,14 +375,6 @@ const CalendarPage = () => {
                 </div>
             </div>
 
-            <div className="cal-sync-card">
-                <div className="cal-sync-icon">🔗</div>
-                <div className="cal-sync-text">
-                    <strong>Stay Synced!</strong>
-                    <span>Add IITR Campus Calendar to your Google or iCal account.</span>
-                </div>
-                <button className="cal-sync-btn">Sync</button>
-            </div>
         </div>
     );
 };

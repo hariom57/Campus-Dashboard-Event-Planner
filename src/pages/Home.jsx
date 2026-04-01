@@ -3,14 +3,15 @@ import { Search, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EventCard from '../components/Event/EventCard';
 import eventService from '../services/events';
+import academicCalendarService from '../services/academicCalendar';
 import { useAuth } from '../context/AuthContext';
 import './Home.css';
 
-const FILTERS = ['All', 'Technical', 'Cultural', 'Sports', 'Academic', 'Fest', 'Workshop'];
+const FILTERS = ['All', 'Technical', 'Cultural', 'Sports', 'Academic', 'Exam', 'Holiday', 'Timetable Reschedule', 'Fest', 'Workshop'];
 
 const Home = () => {
     const navigate = useNavigate();
-    const { user, notifications } = useAuth();
+    const { user, loading: authLoading, notifications } = useAuth();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState('All');
@@ -18,19 +19,54 @@ const Home = () => {
     const [showSearch, setShowSearch] = useState(false);
 
     useEffect(() => {
-        const fetchEvents = async () => {
+        // Don't fetch until the Auth state is settled
+        if (authLoading) return;
+
+        const fetchAll = async () => {
             setLoading(true);
             try {
-                const data = await eventService.getAllEvents();
-                setEvents(data);
+                // Fetch dynamic club events and official academic dates
+                const [dynamicData, academicData] = await Promise.all([
+                    eventService.getAllEvents().catch(() => []),
+                    academicCalendarService.getAllEvents().catch(() => [])
+                ]);
+
+                // Normalize academic events to match the Home feed schema
+                const normalizedAcademic = academicData.map(ae => ({
+                    id: ae.id,
+                    name: ae.title,
+                    tentative_start_time: ae.startDate + 'T00:00:00',
+                    tentative_end_time: ae.endDate + 'T23:59:59',
+                    description: ae.description,
+                    categories: ae.category,
+                    location_name: ae.isHoliday ? 'Institute Holiday' : 'Campus-wide',
+                    isAcademicCalendar: true,
+                    isAllDay: true,
+                    club_name: 'IIT Roorkee',
+                }));
+
+                // Combine and filter for only upcoming events
+                const combined = [...dynamicData, ...normalizedAcademic];
+                const now = new Date();
+                const todayStr = now.toISOString().split('T')[0];
+
+                const upcoming = combined.filter(ev => {
+                    const eventDate = ev.tentative_end_time 
+                        ? ev.tentative_end_time.split('T')[0] 
+                        : ev.tentative_start_time.split('T')[0];
+                    return eventDate >= todayStr;
+                }).sort((a, b) => new Date(a.tentative_start_time) - new Date(b.tentative_start_time));
+
+                setEvents(upcoming);
             } catch (err) {
-                console.error('Error fetching events:', err);
+                console.error("Home feed fetch error", err);
+                setEvents([]); 
             } finally {
                 setLoading(false);
             }
         };
-        fetchEvents();
-    }, []);
+        fetchAll();
+    }, [authLoading, user]);
 
     const filteredEvents = events.filter(ev => {
         const matchFilter =
