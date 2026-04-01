@@ -18,8 +18,11 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            // Only warn if it's NOT the initial user check (which naturally returns 401 if logged out)
-            if (!error.config.url.endsWith('/oauth/user')) {
+            // Silencing 401 warnings for expected auth checks during page mount
+            const excludedPaths = ['/oauth/user', '/admins/is-admin', '/events/all'];
+            const isExcluded = excludedPaths.some(path => error.config.url.endsWith(path));
+
+            if (!isExcluded) {
                 console.warn('Unauthorized access - session might be expired');
             }
         }

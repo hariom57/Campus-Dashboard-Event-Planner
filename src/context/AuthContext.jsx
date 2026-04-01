@@ -18,21 +18,27 @@ export const AuthProvider = ({ children }) => {
         // Check if user is logged in
         const checkAuth = async () => {
             try {
+                // 1. Initial Identity Check
                 const userData = await authService.getCurrentUser();
-                const isAdmin = await authService.getIsAdmin();
+                
+                // 2. Fetch Privilege Details (if identity is confirmed)
+                let isAdmin = false;
                 let managedClubs = [];
 
-                if (isAdmin) {
+                if (userData) {
                     try {
-                        managedClubs = await authService.getManagedClubs();
-                    } catch (clubsError) {
-                        console.error('Failed to fetch managed clubs', clubsError);
+                        isAdmin = await authService.getIsAdmin();
+                        if (isAdmin) {
+                            managedClubs = await authService.getManagedClubs();
+                        }
+                    } catch (privError) {
+                        // Suppress privilege fetch errors if not fully logged in or permission issue
                     }
                 }
 
                 setUser({ ...userData, isAdmin, managedClubs });
             } catch (error) {
-                // Expected state when no session cookie is present
+                // Identity fetch failed (401) is the expected path for logged-out users
                 setUser(null);
             } finally {
                 setLoading(false);
