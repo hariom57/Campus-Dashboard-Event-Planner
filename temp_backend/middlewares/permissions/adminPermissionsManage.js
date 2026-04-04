@@ -1,5 +1,6 @@
-const sql = require('../../database/connection');
+const { AdminPermissionAlloted } = require('../../database/schemas');
 const { userData } = require('../userAuth');
+// const sql = require('../../database/connection');
 
 // Admin permissions manage ID (update this with actual permission ID from admin_permission table)
 const ADMIN_PERMISSIONS_MANAGE_ID = process.env.ADMIN_PERMISSIONS_MANAGE_ID || 6;
@@ -14,14 +15,26 @@ const checkAdminPermissionsManage = async (req, res, next) => {
         try {
             const userId = req.user.user_id;
 
-            const permissionCheck = await sql`
-                SELECT 1
-                FROM admin_permission_alloted
-                WHERE user_id = ${userId}
-                AND admin_permission_id = ${ADMIN_PERMISSIONS_MANAGE_ID}
-            `;
+            // const permissionCheck = await sql`
+            //     SELECT 1
+            //     FROM admin_permission_alloted
+            //     WHERE user_id = ${userId}
+            //     AND admin_permission_id = ${ADMIN_PERMISSIONS_MANAGE_ID}
+            // `;
 
-            if (!permissionCheck || permissionCheck.length === 0) {
+            // if (!permissionCheck || permissionCheck.length === 0) {
+            //     return res.status(403).json({
+            //         error: 'Permission denied',
+            //         message: 'You do not have permission to perform this action'
+            //     });
+            // }
+
+            const permissionCheck = await AdminPermissionAlloted.findOne({
+                where: { user_id: userId, admin_permission_id: ADMIN_PERMISSIONS_MANAGE_ID },
+                attributes: ['user_id']
+            });
+
+            if (!permissionCheck) {
                 return res.status(403).json({
                     error: 'Permission denied',
                     message: 'You do not have permission to perform this action'

@@ -1,26 +1,28 @@
-const sql = require('./connection');
-const createUsersTable = require('./schemas/user');
-const createClubTable = require('./schemas/club');
-const createClubAdminTable = require('./schemas/clubAdmin');
-const createLocationTable = require('./schemas/location');
-const createEventCategoryTable = require('./schemas/eventCategory');
-const createEventTable = require('./schemas/event');
-const createEventCategoryAllotedTable = require('./schemas/eventCategoryAlloted');
-const createEventUpdateTable = require('./schemas/eventUpdate');
-const createReminderTable = require('./schemas/reminder');
-const createUserPreferredCategoryTable = require('./schemas/userPreferredCategory');
-const createUserNotPreferredCategoryTable = require('./schemas/userNotPreferredCategory');
-const createUserPreferredClubTable = require('./schemas/userPreferredClub');
-const createUserNotPreferredClubTable = require('./schemas/userNotPreferredClub');
-const createAdminPermissionTable = require('./schemas/adminPermission');
-const createAdminPermissionAllotedTable = require('./schemas/adminPermissionAlloted');
+const { sequelize } = require('./schemas');
+const applyConstraints = require('./initConstraints');
+// const sql = require('./connection');
+// const createUsersTable = require('./schemas/user');
+// const createClubTable = require('./schemas/club');
+// const createClubAdminTable = require('./schemas/clubAdmin');
+// const createLocationTable = require('./schemas/location');
+// const createEventCategoryTable = require('./schemas/eventCategory');
+// const createEventTable = require('./schemas/event');
+// const createEventCategoryAllotedTable = require('./schemas/eventCategoryAlloted');
+// const createEventUpdateTable = require('./schemas/eventUpdate');
+// const createReminderTable = require('./schemas/reminder');
+// const createUserPreferredCategoryTable = require('./schemas/userPreferredCategory');
+// const createUserNotPreferredCategoryTable = require('./schemas/userNotPreferredCategory');
+// const createUserPreferredClubTable = require('./schemas/userPreferredClub');
+// const createUserNotPreferredClubTable = require('./schemas/userNotPreferredClub');
+// const createAdminPermissionTable = require('./schemas/adminPermission');
+// const createAdminPermissionAllotedTable = require('./schemas/adminPermissionAlloted');
 
 /**
  * Initialize database schema
  * Creates tables if they don't exist
  */
 const dropAllTables = async () => {
-    await sql`
+    await sequelize.query(`
         DROP TABLE IF EXISTS
             admin_permission_alloted,
             admin_permission,
@@ -38,7 +40,7 @@ const dropAllTables = async () => {
             club,
             "user"
         CASCADE;
-    `;
+    `);
 };
 
 const initializeSchema = async () => {
@@ -51,28 +53,55 @@ const initializeSchema = async () => {
             console.log('✅ All tables dropped');
         }
 
+        // const schemaSteps = [
+        //     ['Users', createUsersTable],
+        //     ['Club', createClubTable],
+        //     ['Club admin', createClubAdminTable],
+        //     ['Location', createLocationTable],
+        //     ['Event category', createEventCategoryTable],
+        //     ['Event', createEventTable],
+        //     ['Event category alloted', createEventCategoryAllotedTable],
+        //     ['Event update', createEventUpdateTable],
+        //     ['Reminder', createReminderTable],
+        //     ['User preferred category', createUserPreferredCategoryTable],
+        //     ['User not preferred category', createUserNotPreferredCategoryTable],
+        //     ['User preferred club', createUserPreferredClubTable],
+        //     ['User not preferred club', createUserNotPreferredClubTable],
+        //     ['Admin permission', createAdminPermissionTable],
+        //     ['Admin permission alloted', createAdminPermissionAllotedTable]
+        // ];
+
         const schemaSteps = [
-            ['Users', createUsersTable],
-            ['Club', createClubTable],
-            ['Club admin', createClubAdminTable],
-            ['Location', createLocationTable],
-            ['Event category', createEventCategoryTable],
-            ['Event', createEventTable],
-            ['Event category alloted', createEventCategoryAllotedTable],
-            ['Event update', createEventUpdateTable],
-            ['Reminder', createReminderTable],
-            ['User preferred category', createUserPreferredCategoryTable],
-            ['User not preferred category', createUserNotPreferredCategoryTable],
-            ['User preferred club', createUserPreferredClubTable],
-            ['User not preferred club', createUserNotPreferredClubTable],
-            ['Admin permission', createAdminPermissionTable],
-            ['Admin permission alloted', createAdminPermissionAllotedTable]
+            'Users',
+            'Club',
+            'Club admin',
+            'Location',
+            'Event category',
+            'Event',
+            'Event category alloted',
+            'Event update',
+            'Reminder',
+            'User preferred category',
+            'User not preferred category',
+            'User preferred club',
+            'User not preferred club',
+            'Admin permission',
+            'Admin permission alloted',
         ];
 
-        for (const [label, createFn] of schemaSteps) {
-            await createFn(sql);
+        // sequelize.sync() handles all models in dependency order via foreign key awareness.
+        // alter: false = safe for existing DBs, never modifies existing columns.
+        await sequelize.sync({ alter: false });
+
+        // for (const [label, createFn] of schemaSteps) {
+        //     await createFn(sql);
+        //     console.log(`✅ ${label} table initialized`);
+        // }
+
+        for (const label of schemaSteps) {
             console.log(`✅ ${label} table initialized`);
         }
+        await applyConstraints();
 
         console.log('✨ Database schema initialized successfully!');
     } catch (error) {

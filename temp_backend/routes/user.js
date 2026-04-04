@@ -1,9 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const sql = require('../database/connection');
+const { 
+    sequelize, 
+    UserPreferredClub, 
+    UserNotPreferredClub, 
+    UserPreferredCategory, 
+    UserNotPreferredCategory 
+} = require('../database/schemas'); 
 const { userData } = require('../middlewares/userAuth');
 
-// Protected route to update user preferences
 router.patch('/preferences', userData, async (req, res) => {
     const {
         preferred_clubs,
@@ -12,57 +17,44 @@ router.patch('/preferences', userData, async (req, res) => {
         not_preferred_categories
     } = req.body;
 
+    const userId = req.user.user_id;
+
     try {
-        const userId = req.user.user_id;
+        await sequelize.transaction(async (t) => {
+            
+            const deleteOptions = { where: { user_id: userId }, transaction: t };
+            
+            await Promise.all([
+                UserPreferredClub.destroy(deleteOptions),
+                UserNotPreferredClub.destroy(deleteOptions),
+                UserPreferredCategory.destroy(deleteOptions),
+                UserNotPreferredCategory.destroy(deleteOptions)
+            ]);
 
-        // Use transaction for atomic operation
-        await sql.begin(async sql => {
-            // Delete existing preferences
-            await sql`DELETE FROM user_preferred_club WHERE user_id = ${userId}`;
-            await sql`DELETE FROM user_not_preferred_club WHERE user_id = ${userId}`;
-            await sql`DELETE FROM user_preferred_category WHERE user_id = ${userId}`;
-            await sql`DELETE FROM user_not_preferred_category WHERE user_id = ${userId}`;
-
-            // Insert new preferred clubs
-            if (preferred_clubs && preferred_clubs.length > 0) {
-                await sql`
-                    INSERT INTO user_preferred_club (user_id, club_id)
-                    SELECT ${userId}, club_id
-                    FROM unnest(${sql.array(preferred_clubs)}::bigint[]) AS club_id
-                `;
+            
+            if (preferred_clubs?.length > 0) {
+                const clubData = preferred_clubs.map(id => ({ user_id: userId, club_id: id }));
+                await UserPreferredClub.bulkCreate(clubData, { transaction: t });
             }
 
-            // Insert new not preferred clubs
-            if (not_preferred_clubs && not_preferred_clubs.length > 0) {
-                await sql`
-                    INSERT INTO user_not_preferred_club (user_id, club_id)
-                    SELECT ${userId}, club_id
-                    FROM unnest(${sql.array(not_preferred_clubs)}::bigint[]) AS club_id
-                `;
+            if (not_preferred_clubs?.length > 0) {
+                const notClubData = not_preferred_clubs.map(id => ({ user_id: userId, club_id: id }));
+                await UserNotPreferredClub.bulkCreate(notClubData, { transaction: t });
             }
 
-            // Insert new preferred categories
-            if (preferred_categories && preferred_categories.length > 0) {
-                await sql`
-                    INSERT INTO user_preferred_category (user_id, event_category_id)
-                    SELECT ${userId}, category_id
-                    FROM unnest(${sql.array(preferred_categories)}::integer[]) AS category_id
-                `;
+            if (preferred_categories?.length > 0) {
+                const catData = preferred_categories.map(id => ({ user_id: userId, event_category_id: id }));
+                await UserPreferredCategory.bulkCreate(catData, { transaction: t });
             }
 
-            // Insert new not preferred categories
-            if (not_preferred_categories && not_preferred_categories.length > 0) {
-                await sql`
-                    INSERT INTO user_not_preferred_category (user_id, event_category_id)
-                    SELECT ${userId}, category_id
-                    FROM unnest(${sql.array(not_preferred_categories)}::integer[]) AS category_id
-                `;
+            if (not_preferred_categories?.length > 0) {
+                const notCatData = not_preferred_categories.map(id => ({ user_id: userId, event_category_id: id }));
+                await UserNotPreferredCategory.bulkCreate(notCatData, { transaction: t });
             }
         });
 
-        res.json({
-            message: 'Preferences updated successfully'
-        });
+        res.json({ message: 'Preferences updated successfully' });
+
     } catch (error) {
         console.error('Error updating preferences:', error);
         res.status(500).json({

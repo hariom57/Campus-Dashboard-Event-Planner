@@ -4,7 +4,8 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
-const sql = require('./database/connection.js');
+// const sql = require('./database/connection.js');
+const { sequelize } = require('./database/schemas');
 const initializeSchema = require('./database/initializeSchema.js');
 
 const app = express();
@@ -69,10 +70,24 @@ app.use('/admin-permissions', require('./routes/adminPermissions.js'));
 app.use('/academic-calendar', require('./routes/academicCalendar.js'));
 
 app.get('/', async (_, res) => {
-    const response = await sql`SELECT version();`;
-    console.log(response);
 
-    res.json({ version: response[0].version });
+    // const response = await sql`SELECT version();`;
+    // console.log(response);
+
+    // res.json({ version: response[0].version });
+
+    try {
+        const response = await sequelize.query('SELECT version();');
+        console.log(response);
+
+        res.json({ version: response[0][0].version });
+    } catch (error) {
+        console.error('Error checking database version:', error);
+        res.status(500).json({
+            error: 'Internal server error',
+            message: 'Could not fetch database version'
+        });
+    }
 });
 
 app.listen(PORT, () => {
