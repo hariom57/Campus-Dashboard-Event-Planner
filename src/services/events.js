@@ -7,14 +7,25 @@ import api from './api';
 
 const eventService = {
     // Get all vibrant dynamic events from the DB
-    getAllEvents: async () => {
+    getAllEvents: async (page) => {
         try {
-            const response = await api.get('/events/all');
+            const response = await api.get(`/events/all?page=${page}`);
             return response.data.events || [];
         } catch (error) {
             console.error("Error fetching events from backend:", error);
             // Return empty if backend fails, official academic dates are served separately
             return [];
+        }
+    },
+    
+    // Get total count of events
+    getCount: async () => {
+        try {
+            const response = await api.get('/events/count');
+            return response.count;
+        } catch (error) {
+            console.error(`Error fetching event ${id}:`, error);
+            return null;
         }
     },
 

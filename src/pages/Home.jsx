@@ -17,6 +17,8 @@ const Home = () => {
     const [activeFilter, setActiveFilter] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(null);
 
     useEffect(() => {
         // Don't fetch until the Auth state is settled
@@ -25,9 +27,10 @@ const Home = () => {
         const fetchAll = async () => {
             setLoading(true);
             try {
+                await setTotalCount(eventService.getCount().catch((e) => {console.dir(e.message)}))
                 // Fetch dynamic club events and official academic dates
                 const [dynamicData, academicData] = await Promise.all([
-                    eventService.getAllEvents().catch(() => []),
+                    eventService.getAllEvents(page).catch(() => []),
                     academicCalendarService.getAllEvents().catch(() => [])
                 ]);
 
@@ -78,6 +81,12 @@ const Home = () => {
             (ev.club_name && ev.club_name.toLowerCase().includes(searchQuery.toLowerCase()));
         return matchFilter && matchSearch;
     });
+
+    const pageIncrement = () => {
+        if(totalCount / 10 < page) return;
+
+        setPage(page + 1)
+    }
 
     return (
         <div className="home-page">
@@ -141,6 +150,14 @@ const Home = () => {
                         <EventCard key={ev.id} event={ev} />
                     ))
                 )}
+            </div>
+
+            <div className='see-more'>
+                <button className="btn-link" onClick={() => pageIncrement()}>
+                    <span className='home-feed'>
+                        <p>See More</p>
+                    </span>
+                </button>
             </div>
         </div>
     );

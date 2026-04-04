@@ -145,3 +145,9 @@
     cursor: pointer;
     font-family: 'Roboto', sans-serif;
 }
+
+.see-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

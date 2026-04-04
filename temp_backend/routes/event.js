@@ -8,6 +8,10 @@ const { Op } = require('sequelize');
 // Protected route to get all current events
 router.get('/all', userLoggedIn, async (req, res) => {
     try {
+        const page = parseInt(req.query?.page) || 1;
+        const limit = 10;
+        const offset = (page - 1) * limit;
+
         const events = await Event.findAll({
             attributes: [
                 'id',
@@ -35,13 +39,16 @@ router.get('/all', userLoggedIn, async (req, res) => {
                 }
             },
             order: [['tentative_start_time', 'ASC']],
+            limit: limit,
+            offset: offset,
             raw: true,
             subQuery: false
         });
 
-        
-
-        res.json({ events });
+        res.json({ 
+            events,
+            currentPage: page
+         });
     } catch (error) {
         console.error('Error fetching events:', error);
         res.status(500).json({
@@ -50,6 +57,25 @@ router.get('/all', userLoggedIn, async (req, res) => {
         });
     }
 });
+
+// Protected route to fetch total number of events
+router.get('/count', userLoggedIn, async (req, res) => {
+    try {
+        const count = await Event.count()
+
+        res.status(200).json({
+            count,
+            success: "true"
+        })
+
+    } catch (error) {
+        console.error('Error fetching total number of events:', error);
+        res.status(500).json({
+            error: 'Internal server error',
+            message: 'Could not fetch total number of events'
+        });
+    }
+})
 
 // Protected route to get events by venue/location ID
 router.get('/venue/:venue_id', userLoggedIn, async (req, res) => {

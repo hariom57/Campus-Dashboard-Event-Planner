@@ -68,6 +68,8 @@ app.use('/club-admins', require('./routes/clubAdmin.js'));
 app.use('/admin-permissions', require('./routes/adminPermissions.js'));
 // academic calendar routes
 app.use('/academic-calendar', require('./routes/academicCalendar.js'));
+// Clubs routes
+app.use('/clubs', require('./routes/club.js'));
 
 app.get('/', async (_, res) => {
 
