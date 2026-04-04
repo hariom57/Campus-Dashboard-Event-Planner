@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const sql = require('../database/connection');
+// const sql = require('../database/connection');
+const { AdminPermissionAlloted, Club, ClubAdmin } = require('../database/schemas');
 
 const MANAGE_CLUB_ADMINS_PERMISSION_ID = process.env.MANAGE_CLUB_ADMINS_PERMISSION_ID || 5;
 
@@ -23,36 +24,65 @@ const checkClubAdmin = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userId = decoded.user_id;
 
-        const permissionCheck = await sql`
-            SELECT 1
-            FROM admin_permission_alloted
-            WHERE user_id = ${userId}
-            AND admin_permission_id = ${MANAGE_CLUB_ADMINS_PERMISSION_ID}
-            LIMIT 1
-        `;
+        // const permissionCheck = await sql`
+        //     SELECT 1
+        //     FROM admin_permission_alloted
+        //     WHERE user_id = ${userId}
+        //     AND admin_permission_id = ${MANAGE_CLUB_ADMINS_PERMISSION_ID}
+        //     LIMIT 1
+        // `;
 
-        if (permissionCheck && permissionCheck.length > 0) {
-            const allClubs = await sql`
-                SELECT id AS club_id
-                FROM club
-                ORDER BY id ASC
-            `;
+        // if (permissionCheck && permissionCheck.length > 0) {
+        //     const allClubs = await sql`
+        //         SELECT id AS club_id
+        //         FROM club
+        //         ORDER BY id ASC
+        //     `;
+
+        //     req.user = decoded;
+        //     req.club_admin = {
+        //         user_id: userId,
+        //         club_ids: allClubs.map(record => record.club_id)
+        //     };
+
+        //     return next();
+        // }
+
+        
+
+        const permissionCheck = await AdminPermissionAlloted.findOne({
+            where: { user_id: userId, admin_permission_id: MANAGE_CLUB_ADMINS_PERMISSION_ID },
+            attributes: ['user_id'],
+            limit: 1
+        });
+
+        if (permissionCheck) {
+            const allClubs = await Club.findAll({
+                attributes: [['id', 'club_id']],
+                order: [['id', 'ASC']]
+            });
 
             req.user = decoded;
             req.club_admin = {
                 user_id: userId,
-                club_ids: allClubs.map(record => record.club_id)
+                club_ids: allClubs.map(record => record.dataValues.club_id)
             };
 
             return next();
         }
 
+        // // Check if user is admin of any club
+        // const clubAdminRecords = await sql`
+        //     SELECT club_id
+        //     FROM club_admin
+        //     WHERE user_id = ${userId}
+        // `;
+
         // Check if user is admin of any club
-        const clubAdminRecords = await sql`
-            SELECT club_id
-            FROM club_admin
-            WHERE user_id = ${userId}
-        `;
+        const clubAdminRecords = await ClubAdmin.findAll({
+            where: { user_id: userId },
+            attributes: ['club_id']
+        });
 
         if (!clubAdminRecords || clubAdminRecords.length === 0) {
             return res.status(403).json({
@@ -110,15 +140,26 @@ const checkClubAdminForClub = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userId = decoded.user_id;
 
-        const permissionCheck = await sql`
-            SELECT 1
-            FROM admin_permission_alloted
-            WHERE user_id = ${userId}
-            AND admin_permission_id = ${MANAGE_CLUB_ADMINS_PERMISSION_ID}
-            LIMIT 1
-        `;
+        // const permissionCheck = await sql`
+        //     SELECT 1
+        //     FROM admin_permission_alloted
+        //     WHERE user_id = ${userId}
+        //     AND admin_permission_id = ${MANAGE_CLUB_ADMINS_PERMISSION_ID}
+        //     LIMIT 1
+        // `;
 
-        if (permissionCheck && permissionCheck.length > 0) {
+        // if (permissionCheck && permissionCheck.length > 0) {
+        //     req.user = decoded;
+        //     return next();
+        // }
+
+        const permissionCheck = await AdminPermissionAlloted.findOne({
+            where: { user_id: userId, admin_permission_id: MANAGE_CLUB_ADMINS_PERMISSION_ID },
+            attributes: ['user_id'],
+            limit: 1
+        });
+
+        if (permissionCheck) {
             req.user = decoded;
             return next();
         }
@@ -133,15 +174,27 @@ const checkClubAdminForClub = async (req, res, next) => {
             });
         }
 
-        // Check if user is admin of this specific club
-        const clubAdminRecord = await sql`
-            SELECT club_id
-            FROM club_admin
-            WHERE user_id = ${userId}
-            AND club_id = ${clubId}
-        `;
+        // const clubAdminRecord = await sql`
+        //     SELECT club_id
+        //     FROM club_admin
+        //     WHERE user_id = ${userId}
+        //     AND club_id = ${clubId}
+        // `;
 
-        if (!clubAdminRecord || clubAdminRecord.length === 0) {
+        // if (!clubAdminRecord || clubAdminRecord.length === 0) {
+        //     return res.status(403).json({
+        //         error: 'Permission denied',
+        //         message: 'You are not an admin of this club'
+        //     });
+        // }
+
+        // Check if user is admin of this specific club
+        const clubAdminRecord = await ClubAdmin.findOne({
+            where: { user_id: userId, club_id: clubId },
+            attributes: ['club_id']
+        });
+
+        if (!clubAdminRecord) {
             return res.status(403).json({
                 error: 'Permission denied',
                 message: 'You are not an admin of this club'

@@ -1,4 +1,5 @@
-const sql = require('../../database/connection');
+// const sql = require('../../database/connection');
+const { AdminPermissionAlloted } = require('../../database/schemas');
 const { userData } = require('../userAuth');
 const { checkClubAdmin } = require('../clubAdminAuth');
 
@@ -15,15 +16,25 @@ const checkLocationPermission = async (req, res, next) => {
         try {
             const userId = req.user.user_id;
 
-            // Check if user has location CRUD permission in admin_permission_alloted table
-            const permissionCheck = await sql`
-                SELECT 1
-                FROM admin_permission_alloted
-                WHERE user_id = ${userId}
-                AND admin_permission_id = ${LOCATION_CRUD_PERMISSION_ID}
-            `;
+            // const permissionCheck = await sql`
+            //     SELECT 1
+            //     FROM admin_permission_alloted
+            //     WHERE user_id = ${userId}
+            //     AND admin_permission_id = ${LOCATION_CRUD_PERMISSION_ID}
+            // `;
 
-            if (permissionCheck && permissionCheck.length > 0) {
+            // if (permissionCheck && permissionCheck.length > 0) {
+            //     // User has location CRUD permission, allow access
+            //     return next();
+            // }
+
+            // Check if user has location CRUD permission in admin_permission_alloted table
+            const permissionCheck = await AdminPermissionAlloted.findOne({
+                where: { user_id: userId, admin_permission_id: LOCATION_CRUD_PERMISSION_ID },
+                attributes: ['user_id']
+            });
+
+            if (permissionCheck) {
                 // User has location CRUD permission, allow access
                 return next();
             }

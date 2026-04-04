@@ -20,6 +20,12 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "postgres": "^3.4.8"
+    "pg": "^8.20.0",
+    "pg-hstore": "^2.3.4",
+    "postgres": "^3.4.8",
+    "sequelize": "^6.37.8"
+  },
+  "devDependencies": {
+    "sequelize-cli": "^6.6.5"
   }
 }

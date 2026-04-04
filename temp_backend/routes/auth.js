@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
-const sql = require('../database/connection');
+// const sql = require('../database/connection');
+const { User, sequelize } = require('../database/schemas');
 const { userLoggedIn, userData } = require('../middlewares/userAuth');
 
 const AUTHORIZE_URL = process.env.authoriseURL;
@@ -47,39 +48,52 @@ router.get('/token', async (req, res) => {
         const userData = userDataResponse.data;
 
         // Insert or update user in database
-        await sql`
-            INSERT INTO "user" (
-                user_id, 
-                full_name, 
-                email, 
-                phone_number, 
-                display_picture, 
-                enrolment_number, 
-                branch, 
-                current_year, 
-                branch_department_name,
-                updated_at
-            ) VALUES (
-                ${Number(userData.userId)},
-                ${userData.person.fullName},
-                ${userData.contactInformation.instituteWebmailAddress},
-                ${userData.contactInformation.primaryPhoneNumber || null},
-                ${userData.person.displayPicture},
-                ${userData.student.enrolmentNumber},
-                ${userData.student['branch name']},
-                ${userData.student.currentYear},
-                ${userData.student['branch department name']},
-                CURRENT_TIMESTAMP
-            )
-            ON CONFLICT (user_id) 
-            DO UPDATE SET
-                full_name = EXCLUDED.full_name,
-                email = EXCLUDED.email,
-                phone_number = EXCLUDED.phone_number,
-                display_picture = EXCLUDED.display_picture,
-                current_year = EXCLUDED.current_year,
-                updated_at = CURRENT_TIMESTAMP;
-        `;
+        // await sql`
+        //     INSERT INTO "user" (
+        //         user_id, 
+        //         full_name, 
+        //         email, 
+        //         phone_number, 
+        //         display_picture, 
+        //         enrolment_number, 
+        //         branch, 
+        //         current_year, 
+        //         branch_department_name,
+        //         updated_at
+        //     ) VALUES (
+        //         ${Number(userData.userId)},
+        //         ${userData.person.fullName},
+        //         ${userData.contactInformation.instituteWebmailAddress},
+        //         ${userData.contactInformation.primaryPhoneNumber || null},
+        //         ${userData.person.displayPicture},
+        //         ${userData.student.enrolmentNumber},
+        //         ${userData.student['branch name']},
+        //         ${userData.student.currentYear},
+        //         ${userData.student['branch department name']},
+        //         CURRENT_TIMESTAMP
+        //     )
+        //     ON CONFLICT (user_id) 
+        //     DO UPDATE SET
+        //         full_name = EXCLUDED.full_name,
+        //         email = EXCLUDED.email,
+        //         phone_number = EXCLUDED.phone_number,
+        //         display_picture = EXCLUDED.display_picture,
+        //         current_year = EXCLUDED.current_year,
+        //         updated_at = CURRENT_TIMESTAMP;
+        // `;
+
+        await User.upsert({
+            user_id: BigInt(userData.userId),
+            full_name: userData.person.fullName,
+            email: userData.contactInformation.instituteWebmailAddress,
+            phone_number: userData.contactInformation.primaryPhoneNumber || null,
+            display_picture: userData.person.displayPicture,
+            enrolment_number: userData.student.enrolmentNumber,
+            branch: userData.student['branch name'],
+            current_year: userData.student.currentYear,
+            branch_department_name: userData.student['branch department name'],
+            updated_at: new Date()
+        });
 
         console.log(`✅ User ${userData.userId} synced to database`);
 
@@ -123,21 +137,37 @@ router.get('/token', async (req, res) => {
 // route to get the user data
 router.get('/user', userData, async (req, res) => {
     try {
-        // get user data from database with the id in JWT payload
-        const userData = await sql`
-            SELECT user_id, full_name, email, phone_number, display_picture, enrolment_number, branch, current_year, branch_department_name
-            FROM "user"
-            WHERE user_id = ${req.user.user_id}
-        `;
+        //  const userData = await sql`
+        //     SELECT user_id, full_name, email, phone_number, display_picture, enrolment_number, branch, current_year, branch_department_name
+        //     FROM "user"
+        //     WHERE user_id = ${req.user.user_id}
+        // `;
 
-        if (userData.length === 0) {
+        // if (userData.length === 0) {
+        //     return res.status(404).json({
+        //         error: 'User not found',
+        //         message: 'No user found with this ID'
+        //     });
+        // }
+
+        // return res.json({ userData: userData[0] });
+
+        console.log(req.user);
+        // get user data from database with the id in JWT payload
+        const user = await User.findByPk(req.user.user_id, {
+            attributes: ['user_id', 'full_name', 'email', 'phone_number', 'display_picture', 'enrolment_number', 'branch', 'current_year', 'branch_department_name']
+        });
+
+        console.log(user)
+
+        if (!user) {
             return res.status(404).json({
                 error: 'User not found',
                 message: 'No user found with this ID'
             });
         }
 
-        return res.json({ userData: userData[0] });
+        return res.json({ userData: user });
 
     } catch (error) {
         console.log(error);

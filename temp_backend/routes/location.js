@@ -1,24 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const sql = require('../database/connection');
+const { Location } = require('../database/schemas');
 const { userLoggedIn } = require('../middlewares/userAuth');
 const { checkLocationPermission } = require('../middlewares/permissions/location');
 
 // Protected route to get all locations
 router.get('/all', userLoggedIn, async (req, res) => {
     try {
-        const locations = await sql`
-            SELECT 
-                id,
-                name,
-                location_url,
-                latitude,
-                longitude,
-                description,
-                images
-            FROM location
-            ORDER BY name ASC
-        `;
+        const locations = await Location.findAll({
+            attributes: ['id', 'name', 'location_url', 'latitude', 'longitude', 'description', 'images'],
+            order: [['name', 'ASC']],
+        });
         res.json({ locations });
     } catch (error) {
         console.error('Error fetching locations:', error);
@@ -33,18 +25,10 @@ router.get('/all', userLoggedIn, async (req, res) => {
 router.get('/:locationId', userLoggedIn, async (req, res) => {
     const { locationId } = req.params;
     try {
-        const locations = await sql`
-            SELECT 
-                id,
-                name,
-                location_url,
-                latitude,
-                longitude,
-                description,
-                images
-            FROM location
-            WHERE id = ${locationId}
-        `;
+        const locations = await Location.findAll({
+            attributes: ['id', 'name', 'location_url', 'latitude', 'longitude', 'description', 'images'],
+            where: { id: locationId },
+        });
         res.json({ locations });
     } catch (error) {
         console.error('Error fetching location:', error);
@@ -75,34 +59,24 @@ router.post('/add', checkLocationPermission, async (req, res) => {
             });
         }
 
-        const result = await sql`
-            INSERT INTO location (
-                name,
-                location_url,
-                latitude,
-                longitude,
-                description,
-                images
-            ) VALUES (
-                ${name},
-                ${location_url || null},
-                ${latitude || null},
-                ${longitude || null},
-                ${description || null},
-                ${images || null}
-            )
-            RETURNING *
-        `;
+        const result = await Location.create({
+            name,
+            location_url: location_url || null,
+            latitude: latitude || null,
+            longitude: longitude || null,
+            description: description || null,
+            images: images || null,
+        });
 
         res.status(201).json({
             message: 'Location created successfully',
-            location: result[0]
+            location: result
         });
     } catch (error) {
         console.error('Error creating location:', error);
 
         // Check for unique constraint violation
-        if (error.code === '23505') {
+        if (error.name === 'SequelizeUniqueConstraintError') {
             return res.status(409).json({
                 error: 'Conflict',
                 message: 'A location with this name already exists'
@@ -145,14 +119,12 @@ router.patch('/:locationId', checkLocationPermission, async (req, res) => {
             });
         }
 
-        const result = await sql`
-            UPDATE location
-            SET ${sql(updateData)}
-            WHERE id = ${locationId}
-            RETURNING *
-        `;
+        const [affectedRows, updatedLocations] = await Location.update(updateData, {
+            where: { id: locationId },
+            returning: true,
+        });
 
-        if (!result || result.length === 0) {
+        if (affectedRows === 0) {
             return res.status(404).json({
                 error: 'Not found',
                 message: 'Location not found'
@@ -161,13 +133,13 @@ router.patch('/:locationId', checkLocationPermission, async (req, res) => {
 
         res.json({
             message: 'Location updated successfully',
-            location: result[0]
+            location: updatedLocations[0]
         });
     } catch (error) {
         console.error('Error updating location:', error);
 
         // Check for unique constraint violation
-        if (error.code === '23505') {
+        if (error.name === 'SequelizeUniqueConstraintError') {
             return res.status(409).json({
                 error: 'Conflict',
                 message: 'A location with this name already exists'
@@ -186,22 +158,20 @@ router.delete('/:locationId', checkLocationPermission, async (req, res) => {
     const { locationId } = req.params;
 
     try {
-        const result = await sql`
-            DELETE FROM location
-            WHERE id = ${locationId}
-            RETURNING id
-        `;
+        const result = await Location.findOne({ where: { id: locationId }, attributes: ['id'] });
 
-        if (!result || result.length === 0) {
+        if (!result) {
             return res.status(404).json({
                 error: 'Not found',
                 message: 'Location not found'
             });
         }
 
+        await result.destroy();
+
         res.json({
             message: 'Location deleted successfully',
-            locationId: result[0].id
+            locationId: result.id
         });
     } catch (error) {
         console.error('Error deleting location:', error);

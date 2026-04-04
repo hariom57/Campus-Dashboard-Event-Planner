@@ -1,17 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const sql = require('../database/connection');
+const { EventCategory } = require('../database/schemas');
 const { userLoggedIn } = require('../middlewares/userAuth');
 const { checkEventCategoryPermission } = require('../middlewares/permissions/eventCategory');
 
 // Protected route to get all event categories
 router.get('/all', userLoggedIn, async (req, res) => {
     try {
-        const categories = await sql`
-            SELECT id, name
-            FROM event_category
-            ORDER BY name ASC
-        `;
+        const categories = await EventCategory.findAll({
+            attributes: ['id', 'name'],
+            order: [['name', 'ASC']],
+        });
         res.json({ categories });
     } catch (error) {
         console.error('Error fetching categories:', error);
@@ -26,11 +25,10 @@ router.get('/all', userLoggedIn, async (req, res) => {
 router.get('/:categoryId', userLoggedIn, async (req, res) => {
     const { categoryId } = req.params;
     try {
-        const categories = await sql`
-            SELECT id, name
-            FROM event_category
-            WHERE id = ${categoryId}
-        `;
+        const categories = await EventCategory.findAll({
+            attributes: ['id', 'name'],
+            where: { id: categoryId },
+        });
         res.json({ categories });
     } catch (error) {
         console.error('Error fetching category:', error);
@@ -53,20 +51,16 @@ router.post('/add', checkEventCategoryPermission, async (req, res) => {
             });
         }
 
-        const result = await sql`
-            INSERT INTO event_category (name)
-            VALUES (${name})
-            RETURNING *
-        `;
+        const category = await EventCategory.create({ name });
 
         res.status(201).json({
             message: 'Category created successfully',
-            category: result[0]
+            category,
         });
     } catch (error) {
         console.error('Error creating category:', error);
 
-        if (error.code === '23505') {
+        if (error.name === 'SequelizeUniqueConstraintError') {
             return res.status(409).json({
                 error: 'Conflict',
                 message: 'A category with this name already exists'
@@ -93,14 +87,12 @@ router.patch('/:categoryId', checkEventCategoryPermission, async (req, res) => {
             });
         }
 
-        const result = await sql`
-            UPDATE event_category
-            SET name = ${name}
-            WHERE id = ${categoryId}
-            RETURNING *
-        `;
+        const [affectedRows, updatedCategories] = await EventCategory.update(
+            { name },
+            { where: { id: categoryId }, returning: true }
+        );
 
-        if (!result || result.length === 0) {
+        if (affectedRows === 0) {
             return res.status(404).json({
                 error: 'Not found',
                 message: 'Category not found'
@@ -109,12 +101,12 @@ router.patch('/:categoryId', checkEventCategoryPermission, async (req, res) => {
 
         res.json({
             message: 'Category updated successfully',
-            category: result[0]
+            category: updatedCategories[0],
         });
     } catch (error) {
         console.error('Error updating category:', error);
 
-        if (error.code === '23505') {
+        if (error.name === 'SequelizeUniqueConstraintError') {
             return res.status(409).json({
                 error: 'Conflict',
                 message: 'A category with this name already exists'
@@ -133,22 +125,20 @@ router.delete('/:categoryId', checkEventCategoryPermission, async (req, res) => 
     const { categoryId } = req.params;
 
     try {
-        const result = await sql`
-            DELETE FROM event_category
-            WHERE id = ${categoryId}
-            RETURNING id
-        `;
+        const category = await EventCategory.findOne({ where: { id: categoryId }, attributes: ['id'] });
 
-        if (!result || result.length === 0) {
+        if (!category) {
             return res.status(404).json({
                 error: 'Not found',
                 message: 'Category not found'
             });
         }
 
+        await category.destroy();
+
         res.json({
             message: 'Category deleted successfully',
-            categoryId: result[0].id
+            categoryId: category.id,
         });
     } catch (error) {
         console.error('Error deleting category:', error);

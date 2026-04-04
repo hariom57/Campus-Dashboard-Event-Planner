@@ -1,31 +1,46 @@
 const express = require('express');
 const router = express.Router();
-const sql = require('../database/connection');
+const { Event, Club, Location, EventCategoryAlloted, UserPreferredCategory, UserNotPreferredCategory, UserPreferredClub, UserNotPreferredClub, sequelize } = require('../database/schemas');
 const { userLoggedIn, userData } = require('../middlewares/userAuth');
 const { checkEventPermission } = require('../middlewares/permissions/event');
+const { Op } = require('sequelize');
 
 // Protected route to get all current events
 router.get('/all', userLoggedIn, async (req, res) => {
     try {
-        const events = await sql`
-            SELECT 
-                event.id,
-                event.name,
-                event.tentative_start_time,
-                event.duration_minutes,
-                event.actual_start_time,
-                event.description,
-                club.name AS club_name,
-                location.id AS location_id,
-                location.name AS location_name,
-                location.description AS location_description,
-                location.images AS location_images
-            FROM event
-            LEFT JOIN club ON event.club_id = club.id
-            LEFT JOIN location ON event.location_id = location.id
-            WHERE event.tentative_start_time >= CURRENT_DATE
-            ORDER BY event.tentative_start_time ASC
-        `;
+        const events = await Event.findAll({
+            attributes: [
+                'id',
+                'name',
+                'tentative_start_time',
+                'duration_minutes',
+                'actual_start_time',
+                'description'
+            ],
+            include: [
+                {
+                    model: Club,
+                    attributes: [['name', 'club_name']],
+                    required: false
+                },
+                {
+                    model: Location,
+                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    required: false
+                }
+            ],
+            where: {
+                tentative_start_time: {
+                    [Op.gte]: sequelize.literal('CURRENT_DATE')
+                }
+            },
+            order: [['tentative_start_time', 'ASC']],
+            raw: true,
+            subQuery: false
+        });
+
+        
+
         res.json({ events });
     } catch (error) {
         console.error('Error fetching events:', error);
@@ -41,26 +56,37 @@ router.get('/venue/:venue_id', userLoggedIn, async (req, res) => {
     const { venue_id } = req.params;
 
     try {
-        const events = await sql`
-            SELECT 
-                event.id,
-                event.name,
-                event.tentative_start_time,
-                event.duration_minutes,
-                event.actual_start_time,
-                event.description,
-                club.name AS club_name,
-                location.id AS location_id,
-                location.name AS location_name,
-                location.description AS location_description,
-                location.images AS location_images
-            FROM event
-            LEFT JOIN club ON event.club_id = club.id
-            LEFT JOIN location ON event.location_id = location.id
-            WHERE event.location_id = ${venue_id}
-            AND event.tentative_start_time >= CURRENT_DATE
-            ORDER BY event.tentative_start_time ASC
-        `;
+        const events = await Event.findAll({
+            attributes: [
+                'id',
+                'name',
+                'tentative_start_time',
+                'duration_minutes',
+                'actual_start_time',
+                'description'
+            ],
+            include: [
+                {
+                    model: Club,
+                    attributes: [['name', 'club_name']],
+                    required: false
+                },
+                {
+                    model: Location,
+                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    required: false
+                }
+            ],
+            where: {
+                location_id: venue_id,
+                tentative_start_time: {
+                    [Op.gte]: sequelize.literal('CURRENT_DATE')
+                }
+            },
+            order: [['tentative_start_time', 'ASC']],
+            raw: true,
+            subQuery: false
+        });
 
         res.json({ events });
     } catch (error) {
@@ -77,25 +103,36 @@ router.get('/date/:date', userLoggedIn, async (req, res) => {
     const { date } = req.params;
 
     try {
-        const events = await sql`
-            SELECT 
-                event.id,
-                event.name,
-                event.tentative_start_time,
-                event.duration_minutes,
-                event.actual_start_time,
-                event.description,
-                club.name AS club_name,
-                location.id AS location_id,
-                location.name AS location_name,
-                location.description AS location_description,
-                location.images AS location_images
-            FROM event
-            LEFT JOIN club ON event.club_id = club.id
-            LEFT JOIN location ON event.location_id = location.id
-            WHERE event.tentative_start_time::date = ${date}::date
-            ORDER BY event.tentative_start_time ASC
-        `;
+        const events = await Event.findAll({
+            attributes: [
+                'id',
+                'name',
+                'tentative_start_time',
+                'duration_minutes',
+                'actual_start_time',
+                'description'
+            ],
+            include: [
+                {
+                    model: Club,
+                    attributes: [['name', 'club_name']],
+                    required: false
+                },
+                {
+                    model: Location,
+                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    required: false
+                }
+            ],
+            where: sequelize.where(
+                sequelize.cast(sequelize.col('tentative_start_time'), 'DATE'),
+                Op.eq,
+                sequelize.cast(date, 'DATE')
+            ),
+            order: [['tentative_start_time', 'ASC']],
+            raw: true,
+            subQuery: false
+        });
 
         res.json({ events });
     } catch (error) {
@@ -111,24 +148,33 @@ router.get('/date/:date', userLoggedIn, async (req, res) => {
 router.get('/:eventId', userLoggedIn, async (req, res) => {
     const { eventId } = req.params;
     try {
-        const events = await sql`
-            SELECT 
-                event.id,
-                event.name,
-                event.tentative_start_time,
-                event.duration_minutes,
-                event.actual_start_time,
-                event.description,
-                club.name AS club_name,
-                location.id AS location_id,
-                location.name AS location_name,
-                location.description AS location_description,
-                location.images AS location_images
-            FROM event
-            LEFT JOIN club ON event.club_id = club.id
-            LEFT JOIN location ON event.location_id = location.id
-            WHERE event.id = ${eventId}
-        `;
+        const events = await Event.findAll({
+            attributes: [
+                'id',
+                'name',
+                'tentative_start_time',
+                'duration_minutes',
+                'actual_start_time',
+                'description'
+            ],
+            include: [
+                {
+                    model: Club,
+                    attributes: [['name', 'club_name']],
+                    required: false
+                },
+                {
+                    model: Location,
+                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    required: false
+                }
+            ],
+            where: {
+                id: eventId
+            },
+            raw: true,
+            subQuery: false
+        });
         res.json({ events });
     } catch (error) {
         console.error('Error fetching events:', error);
@@ -142,26 +188,49 @@ router.get('/:eventId', userLoggedIn, async (req, res) => {
 // Protected route to get events from user's preferred clubs
 router.get('/clubs/preferred', userData, async (req, res) => {
     try {
-        const events = await sql`
-            SELECT 
-                event.id,
-                event.name,
-                event.tentative_start_time,
-                event.duration_minutes,
-                event.actual_start_time,
-                event.description,
-                club.name AS club_name,
-                location.id AS location_id,
-                location.name AS location_name,
-                location.description AS location_description,
-                location.images AS location_images
-            FROM event
-            INNER JOIN club ON event.club_id = club.id
-            INNER JOIN user_preferred_club ON club.id = user_preferred_club.club_id
-            LEFT JOIN location ON event.location_id = location.id
-            WHERE event.tentative_start_time >= CURRENT_DATE
-            AND user_preferred_club.user_id = ${req.user.user_id}
-        `;
+
+        const events = await Event.findAll({
+            attributes: [
+                'id',
+                'name',
+                'tentative_start_time',
+                'duration_minutes',
+                'actual_start_time',
+                'description',
+                [sequelize.col('Club.name'), 'club_name'],
+                [sequelize.col('Location.id'), 'location_id'],
+                [sequelize.col('Location.name'), 'location_name'],
+                [sequelize.col('Location.description'), 'location_description'],
+                [sequelize.col('Location.images'), 'location_images']
+            ],
+            include: [
+                {
+                    model: Club,
+                    attributes: [], 
+                    required: true,
+                    include: [{
+                        model: UserPreferredClub,
+                        where: { user_id: req.user.user_id },
+                        attributes: [],
+                        required: true 
+                    }]
+                },
+                {
+                    model: Location,
+                    attributes: [], 
+                    required: false 
+                }
+            ],
+            where: {
+                tentative_start_time: {
+                    [Op.gte]: new Date() 
+                }
+            },
+            order: [['tentative_start_time', 'ASC']],
+            raw: true,
+            subQuery: false
+        });
+
         res.json({ events });
     } catch (error) {
         console.error('Error fetching preferred club events:', error);
@@ -175,27 +244,40 @@ router.get('/clubs/preferred', userData, async (req, res) => {
 // Protected route to get events from user's NOT preferred clubs
 router.get('/clubs/not-preferred', userData, async (req, res) => {
     try {
-        const events = await sql`
-            SELECT 
-                event.id,
-                event.name,
-                event.tentative_start_time,
-                event.duration_minutes,
-                event.actual_start_time,
-                event.description,
-                club.name AS club_name,
-                location.id AS location_id,
-                location.name AS location_name,
-                location.description AS location_description,
-                location.images AS location_images
-            FROM event
-            INNER JOIN club ON event.club_id = club.id
-            INNER JOIN user_not_preferred_club ON club.id = user_not_preferred_club.club_id
-            LEFT JOIN location ON event.location_id = location.id
-            WHERE event.tentative_start_time >= CURRENT_DATE
-            AND user_not_preferred_club.user_id = ${req.user.user_id}
-            ORDER BY event.tentative_start_time ASC
-        `;
+        const events = await Event.findAll({
+            attributes: [
+                'id',
+                'name',
+                'tentative_start_time',
+                'duration_minutes',
+                'actual_start_time',
+                'description'
+            ],
+            include: [
+                {
+                    model: Club,
+                    attributes: [['name', 'club_name']],
+                    required: true
+                },
+                {
+                    model: Location,
+                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    required: false
+                }
+            ],
+            where: {
+                club_id: {
+                    [Op.in]: sequelize.literal(`(SELECT club_id FROM user_not_preferred_club WHERE user_id = ${req.user.user_id})`)
+                },
+                tentative_start_time: {
+                    [Op.gte]: sequelize.literal('CURRENT_DATE')
+                }
+            },
+            order: [['tentative_start_time', 'ASC']],
+            raw: true,
+            subQuery: false
+        });
+
         res.json({ events });
     } catch (error) {
         console.error('Error fetching not preferred club events:', error);
@@ -209,28 +291,40 @@ router.get('/clubs/not-preferred', userData, async (req, res) => {
 // Protected route to get events from user's preferred categories
 router.get('/categories/preferred', userData, async (req, res) => {
     try {
-        const events = await sql`
-            SELECT DISTINCT
-                event.id,
-                event.name,
-                event.tentative_start_time,
-                event.duration_minutes,
-                event.actual_start_time,
-                event.description,
-                club.name AS club_name,
-                location.id AS location_id,
-                location.name AS location_name,
-                location.description AS location_description,
-                location.images AS location_images
-            FROM event
-            LEFT JOIN club ON event.club_id = club.id
-            INNER JOIN event_category_alloted ON event.id = event_category_alloted.event_id
-            INNER JOIN user_preferred_category ON event_category_alloted.event_category_id = user_preferred_category.event_category_id
-            LEFT JOIN location ON event.location_id = location.id
-            WHERE event.tentative_start_time >= CURRENT_DATE
-            AND user_preferred_category.user_id = ${req.user.user_id}
-            ORDER BY event.tentative_start_time ASC
-        `;
+        const events = await Event.findAll({
+            attributes: [
+                'id',
+                'name',
+                'tentative_start_time',
+                'duration_minutes',
+                'actual_start_time',
+                'description'
+            ],
+            include: [
+                {
+                    model: Club,
+                    attributes: [['name', 'club_name']],
+                    required: false
+                },
+                {
+                    model: Location,
+                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    required: false
+                }
+            ],
+            where: {
+                id: {
+                    [Op.in]: sequelize.literal(`(SELECT DISTINCT event_id FROM event_category_alloted WHERE event_category_id IN (SELECT event_category_id FROM user_preferred_category WHERE user_id = ${req.user.user_id}))`)
+                },
+                tentative_start_time: {
+                    [Op.gte]: sequelize.literal('CURRENT_DATE')
+                }
+            },
+            order: [['tentative_start_time', 'ASC']],
+            raw: true,
+            subQuery: false
+        });
+
         res.json({ events });
     } catch (error) {
         console.error('Error fetching preferred category events:', error);
@@ -244,28 +338,40 @@ router.get('/categories/preferred', userData, async (req, res) => {
 // Protected route to get events from user's NOT preferred categories
 router.get('/categories/not-preferred', userData, async (req, res) => {
     try {
-        const events = await sql`
-            SELECT DISTINCT
-                event.id,
-                event.name,
-                event.tentative_start_time,
-                event.duration_minutes,
-                event.actual_start_time,
-                event.description,
-                club.name AS club_name,
-                location.id AS location_id,
-                location.name AS location_name,
-                location.description AS location_description,
-                location.images AS location_images
-            FROM event
-            LEFT JOIN club ON event.club_id = club.id
-            INNER JOIN event_category_alloted ON event.id = event_category_alloted.event_id
-            INNER JOIN user_not_preferred_category ON event_category_alloted.event_category_id = user_not_preferred_category.event_category_id
-            LEFT JOIN location ON event.location_id = location.id
-            WHERE event.tentative_start_time >= CURRENT_DATE
-            AND user_not_preferred_category.user_id = ${req.user.user_id}
-            ORDER BY event.tentative_start_time ASC
-        `;
+        const events = await Event.findAll({
+            attributes: [
+                'id',
+                'name',
+                'tentative_start_time',
+                'duration_minutes',
+                'actual_start_time',
+                'description'
+            ],
+            include: [
+                {
+                    model: Club,
+                    attributes: [['name', 'club_name']],
+                    required: false
+                },
+                {
+                    model: Location,
+                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    required: false
+                }
+            ],
+            where: {
+                id: {
+                    [Op.in]: sequelize.literal(`(SELECT DISTINCT event_id FROM event_category_alloted WHERE event_category_id IN (SELECT event_category_id FROM user_not_preferred_category WHERE user_id = ${req.user.user_id}))`)
+                },
+                tentative_start_time: {
+                    [Op.gte]: sequelize.literal('CURRENT_DATE')
+                }
+            },
+            order: [['tentative_start_time', 'ASC']],
+            raw: true,
+            subQuery: false
+        });
+
         res.json({ events });
     } catch (error) {
         console.error('Error fetching not preferred category events:', error);
@@ -307,14 +413,12 @@ router.patch('/:eventId', checkEventPermission, async (req, res) => {
             });
         }
 
-        const result = await sql`
-            UPDATE event
-            SET ${sql(updateData)}
-            WHERE id = ${eventId}
-            RETURNING *
-        `;
+        const result = await Event.update(updateData, {
+            where: { id: eventId },
+            returning: true
+        });
 
-        if (!result || result.length === 0) {
+        if (result[0] === 0) {
             return res.status(404).json({
                 error: 'Not found',
                 message: 'Event not found'
@@ -323,7 +427,7 @@ router.patch('/:eventId', checkEventPermission, async (req, res) => {
 
         res.json({
             message: 'Event updated successfully',
-            event: result[0]
+            event: result[1][0]
         });
     } catch (error) {
         console.error('Error updating event:', error);
@@ -348,13 +452,11 @@ router.delete('/:eventId', checkEventPermission, async (req, res) => {
     const { eventId } = req.params;
 
     try {
-        const result = await sql`
-            DELETE FROM event
-            WHERE id = ${eventId}
-            RETURNING id
-        `;
+        const result = await Event.destroy({
+            where: { id: eventId }
+        });
 
-        if (!result || result.length === 0) {
+        if (result === 0) {
             return res.status(404).json({
                 error: 'Not found',
                 message: 'Event not found'
@@ -363,7 +465,7 @@ router.delete('/:eventId', checkEventPermission, async (req, res) => {
 
         res.json({
             message: 'Event deleted successfully',
-            eventId: result[0].id
+            eventId: eventId
         });
     } catch (error) {
         console.error('Error deleting event:', error);
@@ -395,30 +497,19 @@ router.post('/add', checkEventPermission, async (req, res) => {
             });
         }
 
-        const result = await sql`
-            INSERT INTO event (
-                name,
-                club_id,
-                location_id,
-                tentative_start_time,
-                duration_minutes,
-                actual_start_time,
-                description
-            ) VALUES (
-                ${name},
-                ${club_id},
-                ${location_id || null},
-                ${tentative_start_time},
-                ${duration_minutes},
-                ${actual_start_time || null},
-                ${description || null}
-            )
-            RETURNING *
-        `;
+        const result = await Event.create({
+            name,
+            club_id,
+            location_id: location_id || null,
+            tentative_start_time,
+            duration_minutes,
+            actual_start_time: actual_start_time || null,
+            description: description || null
+        });
 
         res.status(201).json({
             message: 'Event created successfully',
-            event: result[0]
+            event: result
         });
     } catch (error) {
         console.error('Error creating event:', error);

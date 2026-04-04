@@ -1,6 +1,7 @@
-const sql = require('../../database/connection');
+const { AdminPermissionAlloted, Event } = require('../../database/schemas');
 const { userData } = require('../userAuth');
 const { checkClubAdminForClub } = require('../clubAdminAuth');
+// const sql = require('../../database/connection');
 
 // Event CRUD permission ID (update this with actual permission ID from admin_permission table)
 const EVENT_CRUD_PERMISSION_ID = process.env.EVENT_CRUD_PERMISSION_ID || 1;
@@ -15,15 +16,25 @@ const checkEventPermission = async (req, res, next) => {
         try {
             const userId = req.user.user_id;
 
-            // Check if user has event CRUD permission in admin_permission_alloted table
-            const permissionCheck = await sql`
-                SELECT 1
-                FROM admin_permission_alloted
-                WHERE user_id = ${userId}
-                AND admin_permission_id = ${EVENT_CRUD_PERMISSION_ID}
-            `;
+            // const permissionCheck = await sql`
+            //     SELECT 1
+            //     FROM admin_permission_alloted
+            //     WHERE user_id = ${userId}
+            //     AND admin_permission_id = ${EVENT_CRUD_PERMISSION_ID}
+            // `;
 
-            if (permissionCheck && permissionCheck.length > 0) {
+            // if (permissionCheck && permissionCheck.length > 0) {
+            //     // User has event CRUD permission, allow access
+            //     return next();
+            // }
+
+            // Check if user has event CRUD permission in admin_permission_alloted table
+            const permissionCheck = await AdminPermissionAlloted.findOne({
+                where: { user_id: userId, admin_permission_id: EVENT_CRUD_PERMISSION_ID },
+                attributes: ['user_id']
+            });
+
+            if (permissionCheck) {
                 // User has event CRUD permission, allow access
                 return next();
             }
@@ -31,16 +42,26 @@ const checkEventPermission = async (req, res, next) => {
             // If no event permission, check if user is club admin for this event's club
             const { eventId } = req.params || "";
 
-            // Get the club_id for this event
-            const event = await sql`
-                SELECT club_id
-                FROM event
-                WHERE id = ${eventId}
-            `;
+            // const event = await sql`
+            //     SELECT club_id
+            //     FROM event
+            //     WHERE id = ${eventId}
+            // `;
 
-            if (event && event.length > 0) {
+            // if (event && event.length > 0) {
+            //     // Set club_id in req.body for checkClubAdminForClub middleware
+            //     req.body.club_id = event[0].club_id;
+            // }
+
+            // Get the club_id for this event
+            const event = await Event.findOne({
+                where: { id: eventId },
+                attributes: ['club_id']
+            });
+
+            if (event) {
                 // Set club_id in req.body for checkClubAdminForClub middleware
-                req.body.club_id = event[0].club_id;
+                req.body.club_id = event.club_id;
             }
 
             // Check if user is admin of this club
