@@ -117,12 +117,12 @@ const CalendarPage = () => {
                 st = getLocalDateString(new Date(ev.tentative_start_time));
                 en = ev.tentative_end_time ? getLocalDateString(new Date(ev.tentative_end_time)) : st;
             }
-            
+
             const matchDate = selectedDateStr >= st && selectedDateStr <= en;
-            
+
             const primaryCat = ev.categories ? ev.categories.split(',')[0].trim() : 'General';
             const matchCat = activeCategory === 'All' || primaryCat === activeCategory;
-            
+
             return matchDate && matchCat;
         }).sort((a, b) => new Date(a.tentative_start_time) - new Date(b.tentative_start_time));
     }, [events, selectedDateStr, activeCategory]);
@@ -151,21 +151,21 @@ const CalendarPage = () => {
     const getDaysInMonth = (year, month) => {
         const date = new Date(year, month, 1);
         const days = [];
-        
+
         while (date.getDay() !== 0) {
             date.setDate(date.getDate() - 1);
         }
-        
+
         const firstDayOfGrid = new Date(date);
         const nextMonth = new Date(year, month + 1, 1);
-        
+
         let current = new Date(firstDayOfGrid);
         while (current < nextMonth || current.getDay() !== 0 || days.length === 0) {
             days.push(new Date(current));
             current.setDate(current.getDate() + 1);
             if (days.length >= 42) break;
         }
-        
+
         return days;
     };
 
@@ -184,7 +184,7 @@ const CalendarPage = () => {
         events.forEach(ev => {
             const start = new Date(ev.tentative_start_time);
             const end = ev.tentative_end_time ? new Date(ev.tentative_end_time) : start;
-            
+
             let curr = new Date(start.getFullYear(), start.getMonth(), start.getDate());
             const stop = new Date(end.getFullYear(), end.getMonth(), end.getDate());
 
@@ -205,15 +205,15 @@ const CalendarPage = () => {
             <div className="page-header-bar">
                 <h1>Calendar</h1>
                 <div className="page-header-actions">
-                    <button 
-                        className={`header-icon-btn ${viewMode === 'grid' ? 'active' : ''}`} 
+                    <button
+                        className={`header-icon-btn ${viewMode === 'grid' ? 'active' : ''}`}
                         onClick={() => setViewMode(viewMode === 'strip' ? 'grid' : 'strip')}
                         aria-label="Toggle View"
                     >
                         {viewMode === 'strip' ? <CalendarIcon size={18} /> : <ListIcon size={18} />}
                     </button>
                     <button className="header-icon-btn" aria-label="Search"><Search size={18} /></button>
-                    <button className="header-icon-btn" onClick={() => navigate('/alerts')} aria-label="Alerts"><Bell size={18} /></button>
+                    <button className="header-icon-btn" onClick={() => navigate('/profile')} aria-label="Alerts"><Bell size={18} /></button>
                 </div>
             </div>
 
@@ -268,23 +268,23 @@ const CalendarPage = () => {
                             const isToday = dStr === todayStr;
                             const isCurrentMonth = d.getMonth() === viewDate.getMonth();
                             const dayCats = Array.from(monthEventMap[dStr] || []);
-                             const isRescheduled = dayCats.includes('Timetable Reschedule');
-                             const isWeekend = d.getDay() === 0 || (d.getDay() === 6 && !isRescheduled);
-                             const isHoliday = dayCats.includes('Holiday') || isWeekend;
-                             const isExam = dayCats.includes('Exam');
+                            const isRescheduled = dayCats.includes('Timetable Reschedule');
+                            const isWeekend = d.getDay() === 0 || (d.getDay() === 6 && !isRescheduled);
+                            const isHoliday = dayCats.includes('Holiday') || isWeekend;
+                            const isExam = dayCats.includes('Exam');
 
                             return (
-                                <div 
-                                    key={i} 
+                                <div
+                                    key={i}
                                     className={`cal-grid-day ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''} ${!isCurrentMonth ? 'other-month' : ''} ${isHoliday ? 'holiday' : ''} ${isExam ? 'exam' : ''}`}
                                     onClick={() => setSelectedDate(new Date(d))}
                                 >
                                     <span className="cal-grid-date">{d.getDate()}</span>
                                     <div className="cal-grid-indicators">
                                         {dayCats.slice(0, 3).map((cat, idx) => (
-                                            <span 
-                                                key={idx} 
-                                                className="cal-grid-dot" 
+                                            <span
+                                                key={idx}
+                                                className="cal-grid-dot"
                                                 style={{ background: CATEGORY_COLORS[cat] || '#607d8b' }}
                                             />
                                         ))}

@@ -4,6 +4,9 @@ const router = express.Router();
 const { AdminPermission } = require('../database/schemas')
 const { checkAdminPermissionsManage } = require('../middlewares/permissions/adminPermissionsManage');
 
+// currently i do not feel the need for these routes, but they can be added in the future if needed for admin permission management
+// as currently i feel it can be dangerous to have these routes because accidentally changing or deleting permissions can cause issues with admin access, so for now these routes will be protected and not linked anywhere in the frontend, but can be tested using tools like postman if needed
+
 // Protected route to get all admin permissions
 router.get('/all', checkAdminPermissionsManage, async (req, res) => {
     try {
@@ -103,13 +106,13 @@ router.patch('/:permissionId', checkAdminPermissionsManage, async (req, res) => 
 
         const [updatedRows, [updatedPermission]] = await AdminPermission.update(
             { name },
-            { 
+            {
                 where: { id: permissionId },
-                returning: true 
+                returning: true
             }
         );
 
-        if ( updatedRows === 0 ) {
+        if (updatedRows === 0) {
             return res.status(404).json({
                 error: 'Not found',
                 message: 'Permission not found'

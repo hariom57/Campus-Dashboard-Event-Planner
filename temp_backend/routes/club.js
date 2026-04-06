@@ -1,12 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { Club } = require('../database/schemas');
-const { checkManageAdminsPermission } = require('../middlewares/permissions/manageAdmins');
 const { userLoggedIn } = require('../middlewares/userAuth');
-const { checkClubAdminForClub } = require('../middlewares/clubAdminAuth');
+const { checkManageClub } = require('../middlewares/permissions/manageClubs');
 
 // Route to get all clubs
-router.get('/', userLoggedIn , async (req, res) => {
+router.get('/', userLoggedIn, async (req, res) => {
     try {
         const clubs = await Club.findAll()
 
@@ -41,7 +40,7 @@ router.get('/:id', userLoggedIn, async (req, res) => {
 });
 
 // Protected route to create club
-router.post('/create', checkManageAdminsPermission, async (req, res) => {
+router.post('/create', checkManageClub, async (req, res) => {
     const { name, email, description, logo_url } = req.body;
 
     try {
@@ -64,7 +63,7 @@ router.post('/create', checkManageAdminsPermission, async (req, res) => {
 });
 
 // Protected route to delete club
-router.delete('/delete/:id', checkManageAdminsPermission, async (req, res) => {
+router.delete('/delete/:id', checkManageClub, async (req, res) => {
     const { id } = req.params
 
     try {
@@ -86,7 +85,7 @@ router.delete('/delete/:id', checkManageAdminsPermission, async (req, res) => {
 });
 
 // Protected route to update club
-router.patch('/update/:id', checkClubAdminForClub, async (req, res) => {
+router.patch('/update/:id', checkManageClub, async (req, res) => {
     const { id } = req.params
     const { name, email, description, logo_url } = req.body
     try {

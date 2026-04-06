@@ -1,54 +1,148 @@
 const express = require('express');
 const router = express.Router();
-const { Event, Club, Location, EventCategoryAlloted, UserPreferredCategory, UserNotPreferredCategory, UserPreferredClub, UserNotPreferredClub, sequelize } = require('../database/schemas');
+const { Event, Club, Location, EventCategory, EventCategoryAlloted, UserPreferredCategory, UserNotPreferredCategory, UserPreferredClub, UserNotPreferredClub, sequelize } = require('../database/schemas');
 const { userLoggedIn, userData } = require('../middlewares/userAuth');
 const { checkEventPermission } = require('../middlewares/permissions/event');
 const { Op } = require('sequelize');
 
+class NotFoundError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'NotFoundError';
+    }
+}
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 50;
+
+const getPaginationParams = (req) => {
+    const parsedPage = Number.parseInt(req.query?.page, 10);
+    const parsedLimit = Number.parseInt(req.query?.limit, 10);
+
+    const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : DEFAULT_PAGE;
+    const limit = Number.isInteger(parsedLimit) && parsedLimit > 0
+        ? Math.min(parsedLimit, MAX_LIMIT)
+        : DEFAULT_LIMIT;
+    const offset = (page - 1) * limit;
+
+    return { page, limit, offset };
+};
+
+const buildPaginationMeta = (count, page, limit) => ({
+    currentPage: page,
+    pageSize: limit,
+    totalEvents: count,
+    totalPages: Math.max(1, Math.ceil(count / limit))
+});
+
+const normalizeCategoryIds = (categoryIds) => {
+    if (!Array.isArray(categoryIds)) return [];
+
+    return categoryIds
+        .map((id) => Number.parseInt(id, 10))
+        .filter((id) => Number.isInteger(id) && id > 0);
+};
+
 // Protected route to get all current events
 router.get('/all', userLoggedIn, async (req, res) => {
     try {
-        const page = parseInt(req.query?.page) || 1;
-        const limit = 10;
-        const offset = (page - 1) * limit;
+        const { page, limit, offset } = getPaginationParams(req);
+        const whereClause = {
+            tentative_start_time: {
+                [Op.gte]: sequelize.literal('CURRENT_DATE')
+            }
+        };
 
-        const events = await Event.findAll({
-            attributes: [
-                'id',
-                'name',
-                'tentative_start_time',
-                'duration_minutes',
-                'actual_start_time',
-                'description'
-            ],
-            include: [
-                {
-                    model: Club,
-                    attributes: [['name', 'club_name']],
-                    required: false
+        const [count, events] = await Promise.all([
+            Event.count({ where: whereClause }),
+            Event.findAll({
+                attributes: [
+                    'id',
+                    'name',
+                    'club_id',
+                    'tentative_start_time',
+                    'duration_minutes',
+                    'actual_start_time',
+                    'description'
+                ],
+                include: [
+                    {
+                        model: Club,
+                        attributes: [['name', 'club_name']],
+                        required: false
+                    },
+                    {
+                        model: Location,
+                        attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                        required: false
+                    }
+                ],
+                where: whereClause,
+                order: [['tentative_start_time', 'ASC']],
+                limit: limit,
+                offset: offset,
+                raw: true,
+                subQuery: false
+            })
+        ]);
+
+        const eventIds = events.map((ev) => ev.id);
+
+        let categoryRows = [];
+        if (eventIds.length > 0) {
+            categoryRows = await EventCategoryAlloted.findAll({
+                where: {
+                    event_id: {
+                        [Op.in]: eventIds,
+                    },
                 },
-                {
-                    model: Location,
-                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
-                    required: false
-                }
-            ],
-            where: {
-                tentative_start_time: {
-                    [Op.gte]: sequelize.literal('CURRENT_DATE')
-                }
-            },
-            order: [['tentative_start_time', 'ASC']],
-            limit: limit,
-            offset: offset,
-            raw: true,
-            subQuery: false
+                attributes: ['event_id', 'event_category_id'],
+                raw: true,
+            });
+        }
+
+        const categoryIds = Array.from(new Set(categoryRows.map((row) => row.event_category_id)));
+        const categories = categoryIds.length > 0
+            ? await EventCategory.findAll({
+                where: {
+                    id: {
+                        [Op.in]: categoryIds,
+                    },
+                },
+                attributes: ['id', 'name'],
+                raw: true,
+            })
+            : [];
+
+        const categoryNameById = new Map(categories.map((cat) => [Number(cat.id), cat.name]));
+        const categoryIdsByEventId = new Map();
+
+        for (const row of categoryRows) {
+            const eventId = Number(row.event_id);
+            const catId = Number(row.event_category_id);
+            const existing = categoryIdsByEventId.get(eventId) || [];
+            existing.push(catId);
+            categoryIdsByEventId.set(eventId, existing);
+        }
+
+        const enrichedEvents = events.map((ev) => {
+            const ids = categoryIdsByEventId.get(Number(ev.id)) || [];
+            const names = ids
+                .map((id) => categoryNameById.get(id))
+                .filter(Boolean);
+
+            return {
+                ...ev,
+                category_ids: ids,
+                categories: names.join(', '),
+            };
         });
 
-        res.json({ 
-            events,
-            currentPage: page
-         });
+        res.json({
+            events: enrichedEvents,
+            ...buildPaginationMeta(count, page, limit)
+        });
     } catch (error) {
         console.error('Error fetching events:', error);
         res.status(500).json({
@@ -82,7 +176,9 @@ router.get('/venue/:venue_id', userLoggedIn, async (req, res) => {
     const { venue_id } = req.params;
 
     try {
-        const events = await Event.findAll({
+        const { page, limit, offset } = getPaginationParams(req);
+
+        const { rows: events, count } = await Event.findAndCountAll({
             attributes: [
                 'id',
                 'name',
@@ -109,12 +205,19 @@ router.get('/venue/:venue_id', userLoggedIn, async (req, res) => {
                     [Op.gte]: sequelize.literal('CURRENT_DATE')
                 }
             },
-            order: [['tentative_start_time', 'ASC']],
+            order: [['tentative_start_time', 'DESC']],
+            limit,
+            offset,
             raw: true,
-            subQuery: false
+            subQuery: false,
+            distinct: true,
+            col: 'Event.id'
         });
 
-        res.json({ events });
+        res.json({
+            events,
+            ...buildPaginationMeta(count, page, limit)
+        });
     } catch (error) {
         console.error('Error fetching venue events:', error);
         res.status(500).json({
@@ -129,7 +232,9 @@ router.get('/date/:date', userLoggedIn, async (req, res) => {
     const { date } = req.params;
 
     try {
-        const events = await Event.findAll({
+        const { page, limit, offset } = getPaginationParams(req);
+
+        const { rows: events, count } = await Event.findAndCountAll({
             attributes: [
                 'id',
                 'name',
@@ -155,12 +260,19 @@ router.get('/date/:date', userLoggedIn, async (req, res) => {
                 Op.eq,
                 sequelize.cast(date, 'DATE')
             ),
-            order: [['tentative_start_time', 'ASC']],
+            order: [['tentative_start_time', 'DESC']],
+            limit,
+            offset,
             raw: true,
-            subQuery: false
+            subQuery: false,
+            distinct: true,
+            col: 'Event.id'
         });
 
-        res.json({ events });
+        res.json({
+            events,
+            ...buildPaginationMeta(count, page, limit)
+        });
     } catch (error) {
         console.error('Error fetching date-wise events:', error);
         res.status(500).json({
@@ -174,7 +286,7 @@ router.get('/date/:date', userLoggedIn, async (req, res) => {
 router.get('/:eventId', userLoggedIn, async (req, res) => {
     const { eventId } = req.params;
     try {
-        const events = await Event.findAll({
+        const event = await Event.findByPk(eventId, {
             attributes: [
                 'id',
                 'name',
@@ -193,15 +305,34 @@ router.get('/:eventId', userLoggedIn, async (req, res) => {
                     model: Location,
                     attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
                     required: false
+                },
+                {
+                    model: EventCategory,
+                    attributes: ['id', 'name'],
+                    through: { attributes: [] },
+                    required: false
                 }
             ],
-            where: {
-                id: eventId
-            },
-            raw: true,
             subQuery: false
         });
-        res.json({ events });
+
+        if (!event) {
+            return res.status(404).json({
+                error: 'Not found',
+                message: 'Event not found'
+            });
+        }
+
+        const plainEvent = event.toJSON();
+        const categories = Array.isArray(plainEvent.EventCategories) ? plainEvent.EventCategories : [];
+
+        res.json({
+            event: {
+                ...plainEvent,
+                category_ids: categories.map((cat) => cat.id),
+                categories,
+            }
+        });
     } catch (error) {
         console.error('Error fetching events:', error);
         res.status(500).json({
@@ -214,8 +345,9 @@ router.get('/:eventId', userLoggedIn, async (req, res) => {
 // Protected route to get events from user's preferred clubs
 router.get('/clubs/preferred', userData, async (req, res) => {
     try {
+        const { page, limit, offset } = getPaginationParams(req);
 
-        const events = await Event.findAll({
+        const { rows: events, count } = await Event.findAndCountAll({
             attributes: [
                 'id',
                 'name',
@@ -232,32 +364,39 @@ router.get('/clubs/preferred', userData, async (req, res) => {
             include: [
                 {
                     model: Club,
-                    attributes: [], 
+                    attributes: [],
                     required: true,
                     include: [{
                         model: UserPreferredClub,
                         where: { user_id: req.user.user_id },
                         attributes: [],
-                        required: true 
+                        required: true
                     }]
                 },
                 {
                     model: Location,
-                    attributes: [], 
-                    required: false 
+                    attributes: [],
+                    required: false
                 }
             ],
             where: {
                 tentative_start_time: {
-                    [Op.gte]: new Date() 
+                    [Op.gte]: new Date()
                 }
             },
-            order: [['tentative_start_time', 'ASC']],
+            order: [['tentative_start_time', 'DESC']],
+            limit,
+            offset,
             raw: true,
-            subQuery: false
+            subQuery: false,
+            distinct: true,
+            col: 'Event.id'
         });
 
-        res.json({ events });
+        res.json({
+            events,
+            ...buildPaginationMeta(count, page, limit)
+        });
     } catch (error) {
         console.error('Error fetching preferred club events:', error);
         res.status(500).json({
@@ -270,7 +409,9 @@ router.get('/clubs/preferred', userData, async (req, res) => {
 // Protected route to get events from user's NOT preferred clubs
 router.get('/clubs/not-preferred', userData, async (req, res) => {
     try {
-        const events = await Event.findAll({
+        const { page, limit, offset } = getPaginationParams(req);
+
+        const { rows: events, count } = await Event.findAndCountAll({
             attributes: [
                 'id',
                 'name',
@@ -299,12 +440,19 @@ router.get('/clubs/not-preferred', userData, async (req, res) => {
                     [Op.gte]: sequelize.literal('CURRENT_DATE')
                 }
             },
-            order: [['tentative_start_time', 'ASC']],
+            order: [['tentative_start_time', 'DESC']],
+            limit,
+            offset,
             raw: true,
-            subQuery: false
+            subQuery: false,
+            distinct: true,
+            col: 'Event.id'
         });
 
-        res.json({ events });
+        res.json({
+            events,
+            ...buildPaginationMeta(count, page, limit)
+        });
     } catch (error) {
         console.error('Error fetching not preferred club events:', error);
         res.status(500).json({
@@ -317,7 +465,9 @@ router.get('/clubs/not-preferred', userData, async (req, res) => {
 // Protected route to get events from user's preferred categories
 router.get('/categories/preferred', userData, async (req, res) => {
     try {
-        const events = await Event.findAll({
+        const { page, limit, offset } = getPaginationParams(req);
+
+        const { rows: events, count } = await Event.findAndCountAll({
             attributes: [
                 'id',
                 'name',
@@ -346,12 +496,19 @@ router.get('/categories/preferred', userData, async (req, res) => {
                     [Op.gte]: sequelize.literal('CURRENT_DATE')
                 }
             },
-            order: [['tentative_start_time', 'ASC']],
+            order: [['tentative_start_time', 'DESC']],
+            limit,
+            offset,
             raw: true,
-            subQuery: false
+            subQuery: false,
+            distinct: true,
+            col: 'Event.id'
         });
 
-        res.json({ events });
+        res.json({
+            events,
+            ...buildPaginationMeta(count, page, limit)
+        });
     } catch (error) {
         console.error('Error fetching preferred category events:', error);
         res.status(500).json({
@@ -364,7 +521,9 @@ router.get('/categories/preferred', userData, async (req, res) => {
 // Protected route to get events from user's NOT preferred categories
 router.get('/categories/not-preferred', userData, async (req, res) => {
     try {
-        const events = await Event.findAll({
+        const { page, limit, offset } = getPaginationParams(req);
+
+        const { rows: events, count } = await Event.findAndCountAll({
             attributes: [
                 'id',
                 'name',
@@ -393,12 +552,19 @@ router.get('/categories/not-preferred', userData, async (req, res) => {
                     [Op.gte]: sequelize.literal('CURRENT_DATE')
                 }
             },
-            order: [['tentative_start_time', 'ASC']],
+            order: [['tentative_start_time', 'DESC']],
+            limit,
+            offset,
             raw: true,
-            subQuery: false
+            subQuery: false,
+            distinct: true,
+            col: 'Event.id'
         });
 
-        res.json({ events });
+        res.json({
+            events,
+            ...buildPaginationMeta(count, page, limit)
+        });
     } catch (error) {
         console.error('Error fetching not preferred category events:', error);
         res.status(500).json({
@@ -418,7 +584,8 @@ router.patch('/:eventId', checkEventPermission, async (req, res) => {
         tentative_start_time,
         duration_minutes,
         actual_start_time,
-        description
+        description,
+        category_ids
     } = req.body;
 
     try {
@@ -439,24 +606,52 @@ router.patch('/:eventId', checkEventPermission, async (req, res) => {
             });
         }
 
-        const result = await Event.update(updateData, {
-            where: { id: eventId },
-            returning: true
-        });
-
-        if (result[0] === 0) {
-            return res.status(404).json({
-                error: 'Not found',
-                message: 'Event not found'
+        let updatedEvent;
+        await sequelize.transaction(async (t) => {
+            const result = await Event.update(updateData, {
+                where: { id: eventId },
+                returning: true,
+                transaction: t
             });
-        }
+
+            if (result[0] === 0) {
+                throw new NotFoundError('Event not found');
+            }
+
+            updatedEvent = result[1][0];
+
+            if (category_ids !== undefined) {
+                const normalizedCategoryIds = normalizeCategoryIds(category_ids);
+
+                await EventCategoryAlloted.destroy({
+                    where: { event_id: eventId },
+                    transaction: t
+                });
+
+                if (normalizedCategoryIds.length > 0) {
+                    const rows = normalizedCategoryIds.map((categoryId) => ({
+                        event_id: eventId,
+                        event_category_id: categoryId
+                    }));
+
+                    await EventCategoryAlloted.bulkCreate(rows, { transaction: t });
+                }
+            }
+        });
 
         res.json({
             message: 'Event updated successfully',
-            event: result[1][0]
+            event: updatedEvent
         });
     } catch (error) {
         console.error('Error updating event:', error);
+
+        if (error.name === 'NotFoundError') {
+            return res.status(404).json({
+                error: 'Not found',
+                message: error.message
+            });
+        }
 
         // Check for overlapping events constraint violation
         if (error.code === '23P01' || error.message?.includes('no_overlapping_events_at_location')) {
@@ -511,7 +706,8 @@ router.post('/add', checkEventPermission, async (req, res) => {
         tentative_start_time,
         duration_minutes,
         actual_start_time,
-        description
+        description,
+        category_ids
     } = req.body;
 
     try {
@@ -523,19 +719,33 @@ router.post('/add', checkEventPermission, async (req, res) => {
             });
         }
 
-        const result = await Event.create({
-            name,
-            club_id,
-            location_id: location_id || null,
-            tentative_start_time,
-            duration_minutes,
-            actual_start_time: actual_start_time || null,
-            description: description || null
+        const normalizedCategoryIds = normalizeCategoryIds(category_ids);
+
+        let createdEvent;
+        await sequelize.transaction(async (t) => {
+            createdEvent = await Event.create({
+                name,
+                club_id,
+                location_id: location_id || null,
+                tentative_start_time,
+                duration_minutes,
+                actual_start_time: actual_start_time || null,
+                description: description || null
+            }, { transaction: t });
+
+            if (normalizedCategoryIds.length > 0) {
+                const rows = normalizedCategoryIds.map((categoryId) => ({
+                    event_id: createdEvent.id,
+                    event_category_id: categoryId
+                }));
+
+                await EventCategoryAlloted.bulkCreate(rows, { transaction: t });
+            }
         });
 
         res.status(201).json({
             message: 'Event created successfully',
-            event: result
+            event: createdEvent
         });
     } catch (error) {
         console.error('Error creating event:', error);

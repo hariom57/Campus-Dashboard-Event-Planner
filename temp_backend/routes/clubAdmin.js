@@ -1,40 +1,8 @@
 const express = require('express');
 const router = express.Router();
 // const sql = require('../database/connection');
-const { Club, ClubAdmin, User } = require('../database/schemas');
+const { ClubAdmin, User } = require('../database/schemas');
 const { checkManageClubAdminsPermission } = require('../middlewares/permissions/manageClubAdmins');
-const { checkClubAdmin } = require('../middlewares/clubAdminAuth');
-
-// Route to get clubs where logged-in user is admin
-router.get('/clubs', checkClubAdmin, async (req, res) => {
-    try {
-        const clubIds = req.club_admin.club_ids;
-
-        // const clubs = await sql`
-        //     SELECT id, name, email, description, logo_url
-        //     FROM club
-        //     WHERE id = ANY(${sql.array(clubIds)}::bigint[])
-        //     ORDER BY name ASC
-        // `;
-
-        const clubs = await Club.findAll({
-            attributes: ['id', 'name', 'email', 'description', 'logo_url'],
-            where: {
-                id: clubIds
-            },
-            order: [['name', 'ASC']],
-            raw: true
-        });
-
-        return res.json({ clubs });
-    } catch (error) {
-        console.error('Error fetching clubs for logged-in user:', error);
-        return res.status(500).json({
-            error: 'Internal server error',
-            message: 'Could not fetch clubs'
-        });
-    }
-});
 
 // Protected route to get all admins for a club
 router.get('/club/:clubId', checkManageClubAdminsPermission, async (req, res) => {
@@ -50,7 +18,7 @@ router.get('/club/:clubId', checkManageClubAdminsPermission, async (req, res) =>
         // `;
 
         const admins = await User.findAll({
-            attributes: ['user_id', 'full_name', 'email'],
+            attributes: ['user_id', 'full_name', 'email', 'enrolment_number'],
             include: [{
                 model: ClubAdmin,
                 attributes: [],
@@ -91,7 +59,7 @@ router.get('/club/:clubId/:userId', checkManageClubAdminsPermission, async (req,
             where: { club_id: clubId, user_id: userId },
             include: [{
                 model: User,
-                attributes: ['user_id', 'full_name', 'email'],
+                attributes: ['user_id', 'full_name', 'email', 'enrolment_number'],
             }],
         });
 
@@ -108,6 +76,7 @@ router.get('/club/:clubId/:userId', checkManageClubAdminsPermission, async (req,
                 user_id: admin.User.user_id,
                 full_name: admin.User.full_name,
                 email: admin.User.email,
+                enrolment_number: admin.User.enrolment_number,
             }
         });
     } catch (error) {
@@ -122,15 +91,31 @@ router.get('/club/:clubId/:userId', checkManageClubAdminsPermission, async (req,
 // Protected route to add a club admin
 router.post('/club/:clubId/add', checkManageClubAdminsPermission, async (req, res) => {
     const { clubId } = req.params;
-    const { user_id } = req.body;
+    const { user_id, enrolment_number } = req.body;
 
     try {
-        if (!user_id) {
+        if (!user_id && !enrolment_number) {
             return res.status(400).json({
                 error: 'Bad request',
-                message: 'user_id is required'
+                message: 'user_id or enrolment_number is required'
             });
         }
+
+        const user = user_id
+            ? await User.findByPk(user_id, { attributes: ['user_id'] })
+            : await User.findOne({
+                where: { enrolment_number: String(enrolment_number || '').trim() },
+                attributes: ['user_id']
+            });
+
+        if (!user) {
+            return res.status(404).json({
+                error: 'Not found',
+                message: 'User not found'
+            });
+        }
+
+        const resolvedUserId = user.user_id;
 
         // const existing = await sql`
         //     SELECT 1
@@ -150,10 +135,10 @@ router.post('/club/:clubId/add', checkManageClubAdminsPermission, async (req, re
         //     INSERT INTO club_admin (club_id, user_id)
         //     VALUES (${clubId}, ${user_id})
         // `;
-        
+
 
         const existing = await ClubAdmin.findOne({
-            where: { club_id: clubId, user_id },
+            where: { club_id: clubId, user_id: resolvedUserId },
         });
 
         if (existing) {
@@ -163,10 +148,11 @@ router.post('/club/:clubId/add', checkManageClubAdminsPermission, async (req, re
             });
         }
 
-        await ClubAdmin.create({ club_id: clubId, user_id });
+        await ClubAdmin.create({ club_id: clubId, user_id: resolvedUserId });
 
         res.status(201).json({
-            message: 'Club admin added successfully'
+            message: 'Club admin added successfully',
+            user_id: resolvedUserId,
         });
     } catch (error) {
         console.error('Error adding club admin:', error);

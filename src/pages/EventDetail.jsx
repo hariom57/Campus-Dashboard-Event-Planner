@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    ArrowLeft, Share2, Calendar, Clock, MapPin, Users,
-    Bell, BellOff, ExternalLink, Loader
+    ArrowLeft, Share2, Calendar, Clock, MapPin, Loader
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import eventService from '../services/events';
 import './EventDetail.css';
 
@@ -49,7 +47,6 @@ const getDurationLabel = (mins) => {
 const EventDetail = () => {
     const { eventId } = useParams();
     const navigate = useNavigate();
-    const { notifications, toggleNotification } = useAuth();
 
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -81,20 +78,13 @@ const EventDetail = () => {
     }
 
     const gradient = GRADIENTS[(event.id || 0) % GRADIENTS.length];
-    const categories = event.categories ? event.categories.split(',').map(s => s.trim()) : ['General'];
+    const categories = Array.isArray(event.categories)
+        ? event.categories.map((item) => (typeof item === 'string' ? item : item?.name)).filter(Boolean)
+        : (typeof event.categories === 'string'
+            ? event.categories.split(',').map((s) => s.trim()).filter(Boolean)
+            : ['General']);
     const primaryCat = categories[0];
     const catColor = CATEGORY_COLORS[primaryCat] || '#607d8b';
-
-    const isNotified = notifications?.some(n => n.id === event.id);
-
-    const handleToggleReminder = () => {
-        toggleNotification({
-            id: event.id,
-            title: event.name,
-            time: formatTime(event.tentative_start_time),
-            date: formatFullDate(event.tentative_start_time),
-        });
-    };
 
     const descriptionWords = event.description ? event.description.split(' ') : [];
     const shortDesc = descriptionWords.slice(0, 40).join(' ');
@@ -140,7 +130,6 @@ const EventDetail = () => {
                         <span className="event-detail-club-name">{event.club_name || 'Campus Event'}</span>
                         <span className="event-detail-club-role">Main Organizer</span>
                     </div>
-                    <button className="event-follow-btn">Follow</button>
                 </div>
 
                 {/* Date & Time Row */}
@@ -190,22 +179,6 @@ const EventDetail = () => {
                         )}
                     </div>
                 )}
-            </div>
-
-            {/* Bottom Action Bar */}
-            <div className="event-detail-action-bar">
-                <div className="event-notify-toggle">
-                    <span>NOTIFY ME</span>
-                    <button
-                        className={`notify-toggle-btn ${isNotified ? 'on' : ''}`}
-                        onClick={handleToggleReminder}
-                    >
-                        <span className="toggle-thumb" />
-                    </button>
-                </div>
-                <button className="confirm-rsvp-btn" onClick={handleToggleReminder}>
-                    {isNotified ? <><BellOff size={18} /> Remove RSVP</> : <><Bell size={18} /> Confirm RSVP</>}
-                </button>
             </div>
         </div>
     );

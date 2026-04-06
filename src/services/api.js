@@ -19,7 +19,7 @@ api.interceptors.response.use(
     (error) => {
         if (error.response && error.response.status === 401) {
             // Silencing 401 warnings for expected auth checks during page mount
-            const excludedPaths = ['/oauth/user', '/admins/is-admin', '/events/all'];
+            const excludedPaths = ['/oauth/user', '/events/all'];
             const isExcluded = excludedPaths.some(path => error.config.url.endsWith(path));
 
             if (!isExcluded) {

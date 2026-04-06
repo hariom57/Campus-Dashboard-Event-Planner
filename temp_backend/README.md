@@ -38,6 +38,7 @@ Backend API for the Event Planner project.
    MANAGE_ADMINS_PERMISSION_ID=4
    MANAGE_CLUB_ADMINS_PERMISSION_ID=5
    ADMIN_PERMISSIONS_MANAGE_ID=6
+   MANAGE_CLUBS_PERMISSION_ID=7
    ```
 
 3. Start the server:
@@ -72,6 +73,7 @@ Backend API for the Event Planner project.
 - `checkEventCategoryPermission` allows if user has event category CRUD permission or is a club admin.
 - `checkManageAdminsPermission` allows only if user has manage-admins permission.
 - `checkManageClubAdminsPermission` allows if user has manage-club-admins permission or is club admin for the target club.
+- `checkManageClub` allows only if user has manage-clubs permission (checked in `admin_permission_alloted`).
 - `checkAdminPermissionsManage` allows only if user has admin-permissions-manage permission.
 
 **Permission IDs**
@@ -80,23 +82,37 @@ Backend API for the Event Planner project.
 ## Routes
 
 **/oauth**
-- `GET /login`
-- `GET /token`
-- `GET /user`
+- `GET /login` - Initiates OAuth flow via Channel I
+- `GET /token` - Completes OAuth authentication and creates JWT with enriched claims
+- `GET /user` - Returns user data with `authContext` containing:
+   - `is_admin` (boolean)
+   - `permission_names` (array of admin permission names)
+   - `club_admin_club_ids` (array of club IDs where user can manage events)
+   - `preferred_clubs`, `not_preferred_clubs`
+   - `preferred_categories`, `not_preferred_categories`
+   - Frontend checks should be derived from `permission_names` and these arrays
+
+**/clubs**
+- `GET /` - Get all clubs (public)
+- `GET /:id` - Get specific club (public)
+- `POST /create` - Create new club (requires manage-clubs permission)
+- `PATCH /update/:id` - Update club (requires manage-clubs permission)
+- `DELETE /delete/:id` - Delete club (requires manage-clubs permission)
 
 **/events**
-- `GET /all`
+- `GET /all` - Paginated list of current/future events (`?page=1&limit=10`, default limit 10, max 50), ordered by `tentative_start_time` ascending.
+   - Each event includes `club_id`, `club_name`, `location_id`, `location_name`, `location_description`, `category_ids`, and `categories`.
 - `GET /:eventId`
-- `GET /clubs/preferred`
-- `GET /clubs/not-preferred`
-- `GET /categories/preferred`
-- `GET /categories/not-preferred`
+- `GET /clubs/preferred` - Paginated (`?page=1&limit=10`, default limit 10)
+- `GET /clubs/not-preferred` - Paginated (`?page=1&limit=10`, default limit 10)
+- `GET /categories/preferred` - Paginated (`?page=1&limit=10`, default limit 10)
+- `GET /categories/not-preferred` - Paginated (`?page=1&limit=10`, default limit 10)
 - `POST /add`
 - `PATCH /:eventId`
 - `DELETE /:eventId`
 
 **/user**
-- `PATCH /preferences`
+- `PATCH /preferences` - Updates preferred/not-preferred clubs/categories and refreshes JWT cookie with updated preference claims.
 
 **/locations**
 - `GET /all`
@@ -113,17 +129,18 @@ Backend API for the Event Planner project.
 - `DELETE /:categoryId`
 
 **/admins**
-- `GET /is-admin` - Check if current user is admin
-- `GET /all`
-- `GET /:userId`
-- `POST /add`
-- `PATCH /:userId`
-- `DELETE /:userId`
+- `GET /all` - Get all admins with their permissions (requires manage-admins permission)
+- `GET /:userId` - Get specific admin with permissions (requires manage-admins permission)
+- `POST /add` - Add a new admin (requires manage-admins permission). Accepts `enrolment_number` (preferred) or `user_id`, along with `permission_ids`.
+- `PATCH /:userId` - Update admin permissions (requires manage-admins permission)
+- `DELETE /:userId` - Remove admin (requires manage-admins permission)
+
+*Note: Admin status is derived from JWT `permission_names` and returned in `/oauth/user` response as `authContext.is_admin`.*
 
 **/club-admins**
-- `GET /club/:clubId`
+- `GET /club/:clubId` - Returns admins for a club with `user_id`, `full_name`, `email`, `enrolment_number`
 - `GET /club/:clubId/:userId`
-- `POST /club/:clubId/add`
+- `POST /club/:clubId/add` - Add club admin using `enrolment_number` (preferred) or `user_id`
 - `DELETE /club/:clubId/:userId`
 
 **/admin-permissions**
@@ -131,6 +148,21 @@ Backend API for the Event Planner project.
 - `GET /:permissionId`
 - `PATCH /:permissionId`
 - `DELETE /:permissionId`
+
+## JWT Claims
+
+JWT token includes the following claims:
+- `user_id` - User's unique ID
+- `enrolmentNumber` - Enrollment number
+- `branch` - Student branch
+- `currentYear` - Academic year
+- `displayPicture` - Profile picture URL
+- `permission_names` - Array of admin permission names user has (e.g., ["event_crud", "manage_admins"])
+- `club_admin_club_ids` - Array of club IDs where user is admin (e.g., [1, 3, 5])
+- `preferred_clubs`, `not_preferred_clubs`
+- `preferred_categories`, `not_preferred_categories`
+
+**Note:** Permission and club-admin mappings are embedded in JWT at login time. Changes to admin permissions require user re-login to reflect in token. Preference changes are reflected immediately after `PATCH /user/preferences` because that route re-issues the auth cookie.
 
 ## Database Schema
 

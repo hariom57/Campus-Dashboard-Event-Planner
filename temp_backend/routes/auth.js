@@ -3,7 +3,18 @@ const router = express.Router();
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 // const sql = require('../database/connection');
-const { User, sequelize } = require('../database/schemas');
+const {
+    User,
+    AdminPermissionAlloted,
+    AdminPermission,
+    ClubAdmin,
+    Club,
+    UserPreferredClub,
+    UserNotPreferredClub,
+    UserPreferredCategory,
+    UserNotPreferredCategory,
+    sequelize
+} = require('../database/schemas');
 const { userLoggedIn, userData } = require('../middlewares/userAuth');
 
 const AUTHORIZE_URL = process.env.authoriseURL;
@@ -11,6 +22,9 @@ const CLIENT_ID = process.env.client_id;
 const REDIRECT_URI = process.env.redirectURL;
 const token_URL = process.env.token_URL;
 const client_secret_id = process.env.client_secret_id;
+const EVENT_CRUD_PERMISSION_ID = Number(process.env.EVENT_CRUD_PERMISSION_ID || 1);
+
+const normalizePermissionName = (name) => String(name || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
 
 // user login with Channel I OAuth
 router.get('/login', async (req, res) => {
@@ -97,13 +111,73 @@ router.get('/token', async (req, res) => {
 
         console.log(`✅ User ${userData.userId} synced to database`);
 
+        const permissionRows = await AdminPermissionAlloted.findAll({
+            where: { user_id: userData.userId },
+            attributes: ['admin_permission_id']
+        });
+
+        const permission_ids = permissionRows.map((row) => Number(row.admin_permission_id));
+
+        const [permissions, clubAdminRows, preferredClubRows, notPreferredClubRows, preferredCategoryRows, notPreferredCategoryRows] = await Promise.all([
+            permission_ids.length > 0
+                ? AdminPermission.findAll({
+                    where: { id: permission_ids },
+                    attributes: ['id', 'name']
+                })
+                : Promise.resolve([]),
+            ClubAdmin.findAll({
+                where: { user_id: userData.userId },
+                attributes: ['club_id']
+            }),
+            UserPreferredClub.findAll({
+                where: { user_id: userData.userId },
+                attributes: ['club_id']
+            }),
+            UserNotPreferredClub.findAll({
+                where: { user_id: userData.userId },
+                attributes: ['club_id']
+            }),
+            UserPreferredCategory.findAll({
+                where: { user_id: userData.userId },
+                attributes: ['event_category_id']
+            }),
+            UserNotPreferredCategory.findAll({
+                where: { user_id: userData.userId },
+                attributes: ['event_category_id']
+            })
+        ]);
+
+        const permission_names = permissions.map((row) => row.name);
+        const normalizedPermissionNames = permission_names.map(normalizePermissionName);
+        const hasEventCrudPermission = normalizedPermissionNames.includes('event_crud') || permission_ids.includes(EVENT_CRUD_PERMISSION_ID);
+
+        let club_admin_club_ids = clubAdminRows.map((row) => Number(row.club_id));
+        const preferred_clubs = preferredClubRows.map((row) => Number(row.club_id));
+        const not_preferred_clubs = notPreferredClubRows.map((row) => Number(row.club_id));
+        const preferred_categories = preferredCategoryRows.map((row) => Number(row.event_category_id));
+        const not_preferred_categories = notPreferredCategoryRows.map((row) => Number(row.event_category_id));
+
+        if (hasEventCrudPermission) {
+            const allClubs = await Club.findAll({
+                attributes: ['id'],
+                order: [['id', 'ASC']]
+            });
+            club_admin_club_ids = allClubs.map((club) => Number(club.id));
+        }
+
         // Create JWT with user info
         const jwtPayload = {
             user_id: userData.userId,
             enrolmentNumber: userData.student.enrolmentNumber,
             branch: userData.student['branch name'],
             currentYear: userData.student.currentYear,
-            displayPicture: userData.person.displayPicture
+            displayPicture: userData.person.displayPicture,
+            permission_names,
+            club_admin_club_ids,
+            preferred_clubs,
+            not_preferred_clubs,
+            preferred_categories,
+            not_preferred_categories,
         };
 
         const token = jwt.sign(jwtPayload, process.env.JWT_SECRET, {
@@ -167,7 +241,21 @@ router.get('/user', userData, async (req, res) => {
             });
         }
 
-        return res.json({ userData: user });
+        const permissionNames = Array.isArray(req.user.permission_names) ? req.user.permission_names : [];
+        const is_admin = permissionNames.length > 0;
+
+        return res.json({
+            userData: user,
+            authContext: {
+                is_admin,
+                permission_names: permissionNames,
+                club_admin_club_ids: req.user.club_admin_club_ids || [],
+                preferred_clubs: req.user.preferred_clubs || [],
+                not_preferred_clubs: req.user.not_preferred_clubs || [],
+                preferred_categories: req.user.preferred_categories || [],
+                not_preferred_categories: req.user.not_preferred_categories || []
+            }
+        });
 
     } catch (error) {
         console.log(error);

@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
     LayoutDashboard, Plus, Calendar, Settings, Users,
-    X, Check, Loader, Edit, Trash2, ShieldAlert
+    X, Check, Loader, Edit, Trash2, ShieldAlert, MapPin, Tags
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import miscService from '../services/misc';
 import eventService from '../services/events';
+import clubsService from '../services/clubs';
+import adminsService from '../services/admins';
+import clubAdminsService from '../services/clubAdmins';
 import './Admin.css';
 
 const Admin = () => {
@@ -17,12 +20,38 @@ const Admin = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [loading, setLoading] = useState(false);
     const [locations, setLocations] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [events, setEvents] = useState([]);
+    const [managedClubs, setManagedClubs] = useState([]);
     const [editingEventId, setEditingEventId] = useState(null);
+    const [showLocationModal, setShowLocationModal] = useState(false);
+    const [editingLocationId, setEditingLocationId] = useState(null);
+    const [locationSaving, setLocationSaving] = useState(false);
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [editingCategoryId, setEditingCategoryId] = useState(null);
+    const [categorySaving, setCategorySaving] = useState(false);
+    const [admins, setAdmins] = useState([]);
+    const [adminPermissions, setAdminPermissions] = useState([]);
+    const [showAdminModal, setShowAdminModal] = useState(false);
+    const [editingAdminId, setEditingAdminId] = useState(null);
+    const [adminSaving, setAdminSaving] = useState(false);
+    const [selectedClubAdminClubId, setSelectedClubAdminClubId] = useState('');
+    const [clubAdmins, setClubAdmins] = useState([]);
+    const [newClubAdminEnrollment, setNewClubAdminEnrollment] = useState('');
+    const [clubAdminsLoading, setClubAdminsLoading] = useState(false);
+    const [clubAdminSaving, setClubAdminSaving] = useState(false);
 
-    // Get the clubs this admin manages from the Auth context
-    const clubs = user?.managedClubs || [];
+    // Build managed clubs from JWT club ids + public clubs list
+    const clubs = managedClubs;
+    const managedClubIds = user?.managedClubIds || [];
     const isAdmin = user?.isAdmin || false;
+    const canManageLocations = user?.canManageLocations || false;
+    const canManageEventCategories = user?.canManageEventCategories || false;
+    const canManageEvents = (user?.canManageEvents || false) || managedClubIds.length > 0;
+    const hasGlobalEventCrud = user?.canManageEvents === true;
+    const canManageAdmins = user?.canManageAdmins || false;
+    const canManageClubAdmins = user?.canManageClubAdmins || false;
+    const hasAdminPanelAccess = isAdmin || managedClubIds.length > 0;
 
     const [newEvent, setNewEvent] = useState({
         name: '',
@@ -31,13 +60,106 @@ const Admin = () => {
         date: '',
         time: '',
         duration_minutes: 60,
-        description: ''
+        description: '',
+        category_ids: []
+    });
+
+    const [locationForm, setLocationForm] = useState({
+        name: '',
+        location_url: '',
+        latitude: '',
+        longitude: '',
+        description: '',
+        images_text: ''
+    });
+    const [categoryForm, setCategoryForm] = useState({
+        name: ''
+    });
+    const [adminForm, setAdminForm] = useState({
+        enrolment_number: '',
+        permission_ids: []
     });
 
     useEffect(() => {
         fetchLocations();
+        fetchCategories();
         fetchEvents();
     }, []);
+
+    useEffect(() => {
+        const fetchManagedClubs = async () => {
+            if (authLoading || !user) return;
+
+            const hasClubScopedAccess = Array.isArray(managedClubIds) && managedClubIds.length > 0;
+            const hasGlobalClubAdminAccess = canManageClubAdmins;
+            if (!hasGlobalEventCrud && !hasClubScopedAccess && !hasGlobalClubAdminAccess) return;
+
+            try {
+                const allClubs = await clubsService.getAllClubs();
+                if (hasGlobalEventCrud) {
+                    setManagedClubs(allClubs);
+                    return;
+                }
+
+                if (hasGlobalClubAdminAccess) {
+                    setManagedClubs(allClubs);
+                    return;
+                }
+
+                const allowedClubIds = new Set((managedClubIds || []).map((id) => Number(id)));
+                const filtered = allClubs.filter((club) => allowedClubIds.has(Number(club.id)));
+                setManagedClubs(filtered);
+            } catch (error) {
+                console.error('Failed to fetch managed clubs', error);
+                setManagedClubs([]);
+            }
+        };
+
+        fetchManagedClubs();
+    }, [authLoading, user, managedClubIds, hasGlobalEventCrud, canManageClubAdmins]);
+
+    useEffect(() => {
+        if (!isAdmin || !canManageAdmins) return;
+        fetchAdmins();
+        fetchAdminPermissions();
+    }, [isAdmin, canManageAdmins]);
+
+    useEffect(() => {
+        const availableTabs = [];
+        if (canManageEvents) availableTabs.push('events');
+        if (canManageLocations) availableTabs.push('locations');
+        if (canManageEventCategories) availableTabs.push('categories');
+        if (canManageAdmins) availableTabs.push('admins');
+        if (canManageClubAdmins) availableTabs.push('club-admins');
+
+        if (availableTabs.length === 0) return;
+        if (!availableTabs.includes(activeTab)) {
+            setActiveTab(availableTabs[0]);
+        }
+    }, [
+        activeTab,
+        canManageEvents,
+        canManageLocations,
+        canManageEventCategories,
+        canManageAdmins,
+        canManageClubAdmins,
+    ]);
+
+    useEffect(() => {
+        if (!canManageClubAdmins) return;
+        if (!selectedClubAdminClubId && clubs.length > 0) {
+            setSelectedClubAdminClubId(String(clubs[0].id));
+        }
+    }, [canManageClubAdmins, clubs, selectedClubAdminClubId]);
+
+    useEffect(() => {
+        if (!canManageClubAdmins) return;
+        if (!selectedClubAdminClubId) {
+            setClubAdmins([]);
+            return;
+        }
+        fetchClubAdmins(selectedClubAdminClubId);
+    }, [canManageClubAdmins, selectedClubAdminClubId]);
 
     const fetchEvents = async () => {
         try {
@@ -54,6 +176,16 @@ const Admin = () => {
             setLocations(data);
         } catch (error) {
             console.error("Failed to fetch locations", error);
+        }
+    };
+
+    const fetchCategories = async () => {
+        try {
+            const data = await miscService.getAllEventCategories();
+            setCategories(data);
+        } catch (error) {
+            console.error('Failed to fetch categories', error);
+            setCategories([]);
         }
     };
 
@@ -76,11 +208,13 @@ const Admin = () => {
                 location_id: parseInt(newEvent.location_id),
                 tentative_start_time: startDateTime.toISOString(),
                 duration_minutes: parseInt(newEvent.duration_minutes),
-                description: newEvent.description
+                description: newEvent.description,
+                category_ids: Array.isArray(newEvent.category_ids) ? newEvent.category_ids : []
             };
 
             if (editingEventId) {
                 await eventService.updateEvent(editingEventId, payload);
+
                 alert('Event updated successfully!');
             } else {
                 await eventService.createEvent(payload);
@@ -89,7 +223,7 @@ const Admin = () => {
 
             setShowCreateModal(false);
             setEditingEventId(null);
-            setNewEvent({ name: '', club_id: '', location_id: '', date: '', time: '', duration_minutes: 60, description: '' });
+            setNewEvent({ name: '', club_id: '', location_id: '', date: '', time: '', duration_minutes: 60, description: '', category_ids: [] });
             fetchEvents();
         } catch (error) {
             console.error("Failed to save event", error);
@@ -99,17 +233,62 @@ const Admin = () => {
         }
     };
 
-    const handleEdit = (event) => {
+    const handleEdit = async (event) => {
         const dateObj = new Date(event.tentative_start_time);
+
+        let categoryIds = [];
+        let detailed = null;
+        try {
+            detailed = await eventService.getEventById(event.id);
+            categoryIds = Array.isArray(detailed?.category_ids)
+                ? detailed.category_ids.map((id) => Number(id))
+                : [];
+        } catch (error) {
+            console.error('Failed to fetch event categories for edit', error);
+        }
+
+        const normalizeId = (value) => {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+        };
+
+        const normalizeName = (value) => String(value || '').trim().toLowerCase();
+        const eventClubName =
+            event?.club_name
+            ?? event?.['Club.club_name']
+            ?? detailed?.club_name
+            ?? detailed?.['Club.club_name']
+            ?? detailed?.Club?.club_name
+            ?? '';
+
+        const fallbackClubByName = clubs.find((c) => normalizeName(c?.name) === normalizeName(eventClubName));
+
+        const resolvedClubId = normalizeId(
+            event?.club_id
+            ?? event?.['Club.id']
+            ?? detailed?.club_id
+            ?? detailed?.Club?.id
+            ?? fallbackClubByName?.id
+        );
+
+        const resolvedLocationId = normalizeId(
+            event?.location_id
+            ?? event?.['Location.location_id']
+            ?? event?.['Location.id']
+            ?? detailed?.location_id
+            ?? detailed?.Location?.location_id
+            ?? detailed?.Location?.id
+        );
 
         setNewEvent({
             name: event.name,
-            club_id: clubs.find(c => c.name === event.club_name)?.id || '',
-            location_id: event.location_id || '',
+            club_id: resolvedClubId ? String(resolvedClubId) : '',
+            location_id: resolvedLocationId ? String(resolvedLocationId) : '',
             date: dateObj.toISOString().split('T')[0],
             time: dateObj.toTimeString().slice(0, 5),
             duration_minutes: event.duration_minutes,
-            description: event.description || ''
+            description: event.description || '',
+            category_ids: categoryIds
         });
         setEditingEventId(event.id);
         setShowCreateModal(true);
@@ -128,9 +307,342 @@ const Admin = () => {
     };
 
     const openCreateModal = () => {
+        if (!canManageEvents) return;
         setEditingEventId(null);
-        setNewEvent({ name: '', club_id: '', location_id: '', date: '', time: '', duration_minutes: 60, description: '' });
+        setNewEvent({ name: '', club_id: '', location_id: '', date: '', time: '', duration_minutes: 60, description: '', category_ids: [] });
         setShowCreateModal(true);
+    };
+
+    const toggleEventCategory = (categoryId) => {
+        setNewEvent((prev) => {
+            const selected = Array.isArray(prev.category_ids) ? prev.category_ids : [];
+            const exists = selected.includes(categoryId);
+            return {
+                ...prev,
+                category_ids: exists
+                    ? selected.filter((id) => id !== categoryId)
+                    : [...selected, categoryId]
+            };
+        });
+    };
+
+    const openCreateLocationModal = () => {
+        if (!canManageLocations) return;
+        setEditingLocationId(null);
+        setLocationForm({
+            name: '',
+            location_url: '',
+            latitude: '',
+            longitude: '',
+            description: '',
+            images_text: ''
+        });
+        setShowLocationModal(true);
+    };
+
+    const openEditLocationModal = (location) => {
+        if (!canManageLocations) return;
+        setEditingLocationId(location.id);
+        setLocationForm({
+            name: location.name || '',
+            location_url: location.location_url || '',
+            latitude: location.latitude ?? '',
+            longitude: location.longitude ?? '',
+            description: location.description || '',
+            images_text: Array.isArray(location.images)
+                ? location.images.join(', ')
+                : (location.images || '')
+        });
+        setShowLocationModal(true);
+    };
+
+    const handleLocationInputChange = (e) => {
+        const { name, value } = e.target;
+        setLocationForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleLocationSubmit = async (e) => {
+        e.preventDefault();
+        if (!canManageLocations) return;
+        setLocationSaving(true);
+
+        try {
+            const images = locationForm.images_text
+                ? locationForm.images_text.split(',').map((item) => item.trim()).filter(Boolean)
+                : null;
+
+            const payload = {
+                name: locationForm.name,
+                location_url: locationForm.location_url || null,
+                latitude: locationForm.latitude !== '' ? Number(locationForm.latitude) : null,
+                longitude: locationForm.longitude !== '' ? Number(locationForm.longitude) : null,
+                description: locationForm.description || null,
+                images,
+            };
+
+            if (editingLocationId) {
+                await miscService.updateLocation(editingLocationId, payload);
+                alert('Location updated successfully!');
+            } else {
+                await miscService.createLocation(payload);
+                alert('Location created successfully!');
+            }
+
+            await fetchLocations();
+            setShowLocationModal(false);
+            setEditingLocationId(null);
+        } catch (error) {
+            console.error('Failed to save location', error);
+            alert('Failed to save location. Please check your permissions and fields.');
+        } finally {
+            setLocationSaving(false);
+        }
+    };
+
+    const handleDeleteLocation = async (locationId, locationName) => {
+        if (!canManageLocations) return;
+        if (!window.confirm(`Delete location ${locationName}?`)) return;
+
+        try {
+            await miscService.deleteLocation(locationId);
+            setLocations((prev) => prev.filter((loc) => loc.id !== locationId));
+            alert('Location deleted successfully!');
+        } catch (error) {
+            console.error('Failed to delete location', error);
+            alert('Failed to delete location.');
+        }
+    };
+
+    const openCreateCategoryModal = () => {
+        if (!canManageEventCategories) return;
+        setEditingCategoryId(null);
+        setCategoryForm({ name: '' });
+        setShowCategoryModal(true);
+    };
+
+    const openEditCategoryModal = (category) => {
+        if (!canManageEventCategories) return;
+        setEditingCategoryId(category.id);
+        setCategoryForm({ name: category.name || '' });
+        setShowCategoryModal(true);
+    };
+
+    const handleCategoryInputChange = (e) => {
+        const { name, value } = e.target;
+        setCategoryForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleCategorySubmit = async (e) => {
+        e.preventDefault();
+        if (!canManageEventCategories) return;
+        setCategorySaving(true);
+
+        try {
+            const payload = { name: categoryForm.name.trim() };
+
+            if (editingCategoryId) {
+                await miscService.updateEventCategory(editingCategoryId, payload);
+                alert('Category updated successfully!');
+            } else {
+                await miscService.createEventCategory(payload);
+                alert('Category created successfully!');
+            }
+
+            await fetchCategories();
+            setShowCategoryModal(false);
+            setEditingCategoryId(null);
+            setCategoryForm({ name: '' });
+        } catch (error) {
+            console.error('Failed to save category', error);
+            alert('Failed to save category. Please check your permissions and fields.');
+        } finally {
+            setCategorySaving(false);
+        }
+    };
+
+    const handleDeleteCategory = async (categoryId, categoryName) => {
+        if (!canManageEventCategories) return;
+        if (!window.confirm(`Delete category ${categoryName}?`)) return;
+
+        try {
+            await miscService.deleteEventCategory(categoryId);
+            setCategories((prev) => prev.filter((cat) => cat.id !== categoryId));
+            alert('Category deleted successfully!');
+        } catch (error) {
+            console.error('Failed to delete category', error);
+            alert('Failed to delete category.');
+        }
+    };
+
+    const fetchAdmins = async () => {
+        try {
+            const data = await adminsService.getAllAdmins();
+            setAdmins(data);
+        } catch (error) {
+            console.error('Failed to fetch admins', error);
+            setAdmins([]);
+        }
+    };
+
+    const fetchAdminPermissions = async () => {
+        try {
+            const data = await adminsService.getAllAdminPermissions();
+            setAdminPermissions(data);
+        } catch (error) {
+            console.error('Failed to fetch admin permissions', error);
+            setAdminPermissions([]);
+        }
+    };
+
+    const fetchClubAdmins = async (clubId) => {
+        setClubAdminsLoading(true);
+        try {
+            const data = await clubAdminsService.getClubAdmins(clubId);
+            setClubAdmins(data);
+        } catch (error) {
+            console.error('Failed to fetch club admins', error);
+            setClubAdmins([]);
+        } finally {
+            setClubAdminsLoading(false);
+        }
+    };
+
+    const handleAddClubAdmin = async () => {
+        if (!canManageClubAdmins || !selectedClubAdminClubId) return;
+
+        const enrollment = String(newClubAdminEnrollment || '').trim();
+        if (!enrollment) {
+            alert('Please enter a valid enrollment number.');
+            return;
+        }
+
+        setClubAdminSaving(true);
+        try {
+            await clubAdminsService.addClubAdmin(selectedClubAdminClubId, enrollment);
+            setNewClubAdminEnrollment('');
+            await fetchClubAdmins(selectedClubAdminClubId);
+            alert('Club admin added successfully!');
+        } catch (error) {
+            console.error('Failed to add club admin', error);
+            alert('Failed to add club admin. Please verify enrollment number.');
+        } finally {
+            setClubAdminSaving(false);
+        }
+    };
+
+    const handleRemoveClubAdmin = async (admin) => {
+        if (!canManageClubAdmins || !selectedClubAdminClubId) return;
+        if (!window.confirm(`Remove admin access for ${admin.full_name}?`)) return;
+
+        try {
+            await clubAdminsService.removeClubAdmin(selectedClubAdminClubId, admin.user_id);
+            setClubAdmins((prev) => prev.filter((item) => String(item.user_id) !== String(admin.user_id)));
+            alert('Club admin removed successfully!');
+        } catch (error) {
+            console.error('Failed to remove club admin', error);
+            alert('Failed to remove club admin.');
+        }
+    };
+
+    const openCreateAdminModal = () => {
+        if (!canManageAdmins) return;
+        setEditingAdminId(null);
+        setAdminForm({
+            enrolment_number: '',
+            permission_ids: []
+        });
+        setShowAdminModal(true);
+    };
+
+    const openEditAdminModal = async (admin) => {
+        if (!canManageAdmins) return;
+
+        try {
+            const adminData = await adminsService.getAdminByUserId(admin.user_id);
+            const selectedPermissions = Array.isArray(adminData.permissions)
+                ? adminData.permissions.map((p) => Number(p.id)).filter((id) => Number.isFinite(id))
+                : [];
+
+            setEditingAdminId(admin.user_id);
+            setAdminForm({
+                enrolment_number: String(adminData?.enrolment_number || admin?.enrolment_number || ''),
+                permission_ids: selectedPermissions,
+            });
+            setShowAdminModal(true);
+        } catch (error) {
+            console.error('Failed to fetch admin details', error);
+            alert('Failed to load admin details.');
+        }
+    };
+
+    const toggleAdminPermission = (permissionId) => {
+        setAdminForm((prev) => {
+            const current = Array.isArray(prev.permission_ids) ? prev.permission_ids : [];
+            const exists = current.includes(permissionId);
+            return {
+                ...prev,
+                permission_ids: exists
+                    ? current.filter((id) => id !== permissionId)
+                    : [...current, permissionId],
+            };
+        });
+    };
+
+    const handleAdminInputChange = (e) => {
+        const { name, value } = e.target;
+        setAdminForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleAdminSubmit = async (e) => {
+        e.preventDefault();
+        if (!canManageAdmins) return;
+
+        const payloadPermissionIds = Array.isArray(adminForm.permission_ids)
+            ? adminForm.permission_ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+            : [];
+
+        if (!editingAdminId && !String(adminForm.enrolment_number).trim()) {
+            alert('Please enter a valid enrollment number.');
+            return;
+        }
+
+        setAdminSaving(true);
+        try {
+            if (editingAdminId) {
+                await adminsService.updateAdminPermissions(editingAdminId, payloadPermissionIds);
+                alert('Admin permissions updated successfully!');
+            } else {
+                await adminsService.addAdmin({
+                    enrolment_number: String(adminForm.enrolment_number).trim(),
+                    permission_ids: payloadPermissionIds,
+                });
+                alert('Admin added successfully!');
+            }
+
+            await fetchAdmins();
+            setShowAdminModal(false);
+            setEditingAdminId(null);
+            setAdminForm({ enrolment_number: '', permission_ids: [] });
+        } catch (error) {
+            console.error('Failed to save admin', error);
+            alert('Failed to save admin. Please verify enrollment number and permissions.');
+        } finally {
+            setAdminSaving(false);
+        }
+    };
+
+    const handleDeleteAdmin = async (admin) => {
+        if (!canManageAdmins) return;
+        if (!window.confirm(`Remove admin access for ${admin.full_name}?`)) return;
+
+        try {
+            await adminsService.deleteAdmin(admin.user_id);
+            setAdmins((prev) => prev.filter((item) => String(item.user_id) !== String(admin.user_id)));
+            alert('Admin removed successfully!');
+        } catch (error) {
+            console.error('Failed to delete admin', error);
+            alert('Failed to remove admin access.');
+        }
     };
 
     if (authLoading) {
@@ -153,7 +665,7 @@ const Admin = () => {
         );
     }
 
-    if (!isAdmin) {
+    if (!hasAdminPanelAccess) {
         return (
             <div className="admin-page flex-center" style={{ paddingTop: '80px', minHeight: '100vh', background: 'var(--brand-purple-pale)' }}>
                 <div className="card text-center" style={{ padding: '3rem', maxWidth: '400px' }}>
@@ -174,10 +686,38 @@ const Admin = () => {
                         <h1 className="page-title">Club Admin</h1>
                         <p className="page-subtitle">Manage your club events</p>
                     </div>
-                    <button className="btn btn-yellow" onClick={openCreateModal}>
-                        <Plus size={18} />
-                        Post New Event
-                    </button>
+                    <div className="admin-header-actions">
+                        {canManageEvents && (
+                            <button className="btn btn-outline" onClick={() => setActiveTab('events')}>
+                                <Calendar size={18} />
+                                Manage Events
+                            </button>
+                        )}
+                        {canManageLocations && (
+                            <button className="btn btn-outline" onClick={() => setActiveTab('locations')}>
+                                <MapPin size={18} />
+                                Manage Locations
+                            </button>
+                        )}
+                        {canManageEventCategories && (
+                            <button className="btn btn-outline" onClick={() => setActiveTab('categories')}>
+                                <Tags size={18} />
+                                Manage Categories
+                            </button>
+                        )}
+                        {canManageAdmins && (
+                            <button className="btn btn-outline" onClick={() => setActiveTab('admins')}>
+                                <Users size={18} />
+                                Manage Admins
+                            </button>
+                        )}
+                        {canManageClubAdmins && (
+                            <button className="btn btn-outline" onClick={() => setActiveTab('club-admins')}>
+                                <Users size={18} />
+                                Manage Club Admins
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Stats Row (Mocked / Placeholder) */}
@@ -196,13 +736,43 @@ const Admin = () => {
 
                 {/* Main Content Tabs */}
                 <div className="admin-tabs">
-                    <button className={`tab-btn ${activeTab === 'events' ? 'active' : ''}`} onClick={() => setActiveTab('events')}>
-                        Create / Manage
-                    </button>
+                    {canManageEvents && (
+                        <button className={`tab-btn ${activeTab === 'events' ? 'active' : ''}`} onClick={() => setActiveTab('events')}>
+                            Manage Events
+                        </button>
+                    )}
+                    {canManageLocations && (
+                        <button className={`tab-btn ${activeTab === 'locations' ? 'active' : ''}`} onClick={() => setActiveTab('locations')}>
+                            Manage Locations
+                        </button>
+                    )}
+                    {canManageEventCategories && (
+                        <button className={`tab-btn ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => setActiveTab('categories')}>
+                            Manage Categories
+                        </button>
+                    )}
+                    {canManageAdmins && (
+                        <button className={`tab-btn ${activeTab === 'admins' ? 'active' : ''}`} onClick={() => setActiveTab('admins')}>
+                            Manage Admins
+                        </button>
+                    )}
+                    {canManageClubAdmins && (
+                        <button className={`tab-btn ${activeTab === 'club-admins' ? 'active' : ''}`} onClick={() => setActiveTab('club-admins')}>
+                            Manage Club Admins
+                        </button>
+                    )}
                 </div>
 
-                {activeTab === 'events' && (
+                {activeTab === 'events' && canManageEvents && (
                     <div className="events-table-container card animate-fade-in">
+                        <div className="admin-locations-header">
+                            <h3>Event Management</h3>
+                            <button className="btn btn-yellow" onClick={openCreateModal}>
+                                <Plus size={16} />
+                                Post New Event
+                            </button>
+                        </div>
+
                         {events.length > 0 ? (
                             <div style={{ overflowX: 'auto' }}>
                                 <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -238,7 +808,258 @@ const Admin = () => {
                         ) : (
                             <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
                                 <Calendar size={48} style={{ color: 'var(--grey-300)', margin: '0 auto 1rem auto' }} />
-                                <p style={{ color: 'var(--grey-500)' }}>Use the "Post New Event" button to add events to the calendar.</p>
+                                <p style={{ color: 'var(--grey-500)' }}>Use the button above to post your first event.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'locations' && canManageLocations && (
+                    <div className="events-table-container card animate-fade-in">
+                        <div className="admin-locations-header">
+                            <h3>Location Management</h3>
+                            <button className="btn btn-yellow" onClick={openCreateLocationModal}>
+                                <Plus size={16} />
+                                Add Location
+                            </button>
+                        </div>
+
+                        {locations.length > 0 ? (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '1px solid var(--grey-200)', background: 'var(--brand-purple-pale)' }}>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Name</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Map URL</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Coordinates</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {locations.map((loc) => (
+                                            <tr key={loc.id} style={{ borderBottom: '1px solid var(--grey-100)' }}>
+                                                <td style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-primary)' }}>{loc.name}</td>
+                                                <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
+                                                    {loc.location_url ? (
+                                                        <a href={loc.location_url} target="_blank" rel="noreferrer">Open Map</a>
+                                                    ) : (
+                                                        '-'
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
+                                                    {loc.latitude && loc.longitude ? `${loc.latitude}, ${loc.longitude}` : '-'}
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <button className="btn-icon" style={{ display: 'inline-flex', marginRight: '0.5rem', color: 'var(--grey-500)' }} onClick={() => openEditLocationModal(loc)} title="Edit Location">
+                                                        <Edit size={16} />
+                                                    </button>
+                                                    <button className="btn-icon" style={{ display: 'inline-flex', color: 'var(--brand-red)' }} onClick={() => handleDeleteLocation(loc.id, loc.name)} title="Delete Location">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+                                <MapPin size={48} style={{ color: 'var(--grey-300)', margin: '0 auto 1rem auto' }} />
+                                <p style={{ color: 'var(--grey-500)' }}>No locations yet. Create your first location.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'categories' && canManageEventCategories && (
+                    <div className="events-table-container card animate-fade-in">
+                        <div className="admin-locations-header">
+                            <h3>Event Category Management</h3>
+                            <button className="btn btn-yellow" onClick={openCreateCategoryModal}>
+                                <Plus size={16} />
+                                Add Category
+                            </button>
+                        </div>
+
+                        {categories.length > 0 ? (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '1px solid var(--grey-200)', background: 'var(--brand-purple-pale)' }}>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Category Name</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {categories.map((cat) => (
+                                            <tr key={cat.id} style={{ borderBottom: '1px solid var(--grey-100)' }}>
+                                                <td style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-primary)' }}>{cat.name}</td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <button className="btn-icon" style={{ display: 'inline-flex', marginRight: '0.5rem', color: 'var(--grey-500)' }} onClick={() => openEditCategoryModal(cat)} title="Edit Category">
+                                                        <Edit size={16} />
+                                                    </button>
+                                                    <button className="btn-icon" style={{ display: 'inline-flex', color: 'var(--brand-red)' }} onClick={() => handleDeleteCategory(cat.id, cat.name)} title="Delete Category">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+                                <Tags size={48} style={{ color: 'var(--grey-300)', margin: '0 auto 1rem auto' }} />
+                                <p style={{ color: 'var(--grey-500)' }}>No categories yet. Create your first event category.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'admins' && canManageAdmins && (
+                    <div className="events-table-container card animate-fade-in">
+                        <div className="admin-locations-header">
+                            <h3>Admin Management</h3>
+                            <button className="btn btn-yellow" onClick={openCreateAdminModal}>
+                                <Plus size={16} />
+                                Add Admin
+                            </button>
+                        </div>
+
+                        {admins.length > 0 ? (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '1px solid var(--grey-200)', background: 'var(--brand-purple-pale)' }}>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Name</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Enrollment Number</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Email</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Permissions</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {admins.map((admin) => (
+                                            <tr key={admin.user_id} style={{ borderBottom: '1px solid var(--grey-100)' }}>
+                                                <td style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-primary)' }}>{admin.full_name}</td>
+                                                <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{admin.enrolment_number || '-'}</td>
+                                                <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{admin.email || '-'}</td>
+                                                <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
+                                                    <div className="admin-permission-chip-wrap">
+                                                        {Array.isArray(admin.permissions) && admin.permissions.length > 0 ? (
+                                                            admin.permissions.map((permission) => (
+                                                                <span key={`${admin.user_id}-${permission.id}`} className="admin-permission-chip">
+                                                                    {permission.name}
+                                                                </span>
+                                                            ))
+                                                        ) : (
+                                                            <span className="category-chip-empty">No permissions</span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <button className="btn-icon" style={{ display: 'inline-flex', marginRight: '0.5rem', color: 'var(--grey-500)' }} onClick={() => openEditAdminModal(admin)} title="Edit Admin Permissions">
+                                                        <Edit size={16} />
+                                                    </button>
+                                                    <button className="btn-icon" style={{ display: 'inline-flex', color: 'var(--brand-red)' }} onClick={() => handleDeleteAdmin(admin)} title="Remove Admin">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+                                <Users size={48} style={{ color: 'var(--grey-300)', margin: '0 auto 1rem auto' }} />
+                                <p style={{ color: 'var(--grey-500)' }}>No admins assigned yet.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'club-admins' && canManageClubAdmins && (
+                    <div className="events-table-container card animate-fade-in">
+                        <div className="admin-locations-header">
+                            <h3>Club Admin Management</h3>
+                        </div>
+
+                        <div className="event-form" style={{ paddingBottom: '0.5rem' }}>
+                            <div className="form-group">
+                                <label>Select Club</label>
+                                <select
+                                    value={selectedClubAdminClubId}
+                                    onChange={(e) => setSelectedClubAdminClubId(e.target.value)}
+                                >
+                                    <option value="">Select Club</option>
+                                    {clubs.map((club) => (
+                                        <option key={club.id} value={String(club.id)}>{club.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group" style={{ flex: 1 }}>
+                                    <label>Add Club Admin (Enrollment Number)</label>
+                                    <input
+                                        value={newClubAdminEnrollment}
+                                        onChange={(e) => setNewClubAdminEnrollment(e.target.value)}
+                                        placeholder="Enter enrollment number"
+                                        disabled={!selectedClubAdminClubId || clubAdminSaving}
+                                    />
+                                </div>
+                                <div className="form-group" style={{ justifyContent: 'flex-end' }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-yellow"
+                                        onClick={handleAddClubAdmin}
+                                        disabled={!selectedClubAdminClubId || clubAdminSaving}
+                                    >
+                                        {clubAdminSaving ? <Loader size={16} className="animate-spin" /> : 'Add Admin'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {!selectedClubAdminClubId ? (
+                            <div className="empty-state" style={{ padding: '2rem', textAlign: 'center' }}>
+                                <p style={{ color: 'var(--grey-500)' }}>Select a club to manage its admins.</p>
+                            </div>
+                        ) : clubAdminsLoading ? (
+                            <div className="empty-state" style={{ padding: '2rem', textAlign: 'center' }}>
+                                <Loader size={24} className="spin" />
+                            </div>
+                        ) : clubAdmins.length > 0 ? (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '1px solid var(--grey-200)', background: 'var(--brand-purple-pale)' }}>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Name</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Enrollment Number</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Email</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {clubAdmins.map((admin) => (
+                                            <tr key={`${selectedClubAdminClubId}-${admin.user_id}`} style={{ borderBottom: '1px solid var(--grey-100)' }}>
+                                                <td style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-primary)' }}>{admin.full_name}</td>
+                                                <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{admin.enrolment_number || '-'}</td>
+                                                <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{admin.email || '-'}</td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <button className="btn-icon" style={{ display: 'inline-flex', color: 'var(--brand-red)' }} onClick={() => handleRemoveClubAdmin(admin)} title="Remove Club Admin">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="empty-state" style={{ padding: '2rem', textAlign: 'center' }}>
+                                <p style={{ color: 'var(--grey-500)' }}>No admins assigned for this club yet.</p>
                             </div>
                         )}
                     </div>
@@ -277,7 +1098,7 @@ const Admin = () => {
                                     >
                                         <option value="">Select Club</option>
                                         {clubs.map(c => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                            <option key={c.id} value={String(c.id)}>{c.name}</option>
                                         ))}
                                     </select>
                                     <small style={{ color: 'var(--grey-500)', fontSize: '0.75rem', marginTop: '4px' }}>
@@ -334,6 +1155,39 @@ const Admin = () => {
                                             <option key={loc.id} value={loc.id}>{loc.name}</option>
                                         ))}
                                     </select>
+                                    {canManageLocations && (
+                                        <small style={{ color: 'var(--brand-purple)', fontSize: '0.75rem', marginTop: '4px' }}>
+                                            Need a new venue? <button type="button" className="btn-link-inline" onClick={() => { setShowCreateModal(false); setActiveTab('locations'); }}>Manage Locations</button>
+                                        </small>
+                                    )}
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Event Category</label>
+                                    <div className="category-chip-wrap">
+                                        {categories.length > 0 ? (
+                                            categories.map((cat) => {
+                                                const active = (newEvent.category_ids || []).includes(Number(cat.id));
+                                                return (
+                                                    <button
+                                                        key={cat.id}
+                                                        type="button"
+                                                        className={`category-chip ${active ? 'active' : ''}`}
+                                                        onClick={() => toggleEventCategory(Number(cat.id))}
+                                                    >
+                                                        {cat.name}
+                                                    </button>
+                                                );
+                                            })
+                                        ) : (
+                                            <span className="category-chip-empty">No categories available.</span>
+                                        )}
+                                    </div>
+                                    {canManageEventCategories && (
+                                        <small style={{ color: 'var(--brand-purple)', fontSize: '0.75rem', marginTop: '4px' }}>
+                                            Need a new category? <button type="button" className="btn-link-inline" onClick={() => { setShowCreateModal(false); setActiveTab('categories'); }}>Manage Categories</button>
+                                        </small>
+                                    )}
                                 </div>
 
                                 <div className="form-group">
@@ -353,6 +1207,151 @@ const Admin = () => {
                                     </button>
                                     <button type="submit" className="btn btn-yellow" disabled={loading}>
                                         {loading ? <Loader size={16} className="animate-spin" /> : (editingEventId ? 'Save Changes' : 'Create Event')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {showLocationModal && canManageLocations && (
+                    <div className="modal-overlay animate-fade-in">
+                        <div className="modal-content card">
+                            <div className="modal-header">
+                                <h2>{editingLocationId ? 'Edit Location' : 'Create Location'}</h2>
+                                <button className="btn-icon" onClick={() => setShowLocationModal(false)}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <form onSubmit={handleLocationSubmit} className="event-form">
+                                <div className="form-group">
+                                    <label>Location Name</label>
+                                    <input name="name" value={locationForm.name} onChange={handleLocationInputChange} required />
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Map URL</label>
+                                    <input name="location_url" value={locationForm.location_url} onChange={handleLocationInputChange} placeholder="https://maps.google.com/..." />
+                                </div>
+
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Latitude</label>
+                                        <input name="latitude" value={locationForm.latitude} onChange={handleLocationInputChange} placeholder="29.864" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Longitude</label>
+                                        <input name="longitude" value={locationForm.longitude} onChange={handleLocationInputChange} placeholder="77.896" />
+                                    </div>
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Description</label>
+                                    <textarea name="description" value={locationForm.description} onChange={handleLocationInputChange} rows={3} />
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Images (comma-separated URLs)</label>
+                                    <input name="images_text" value={locationForm.images_text} onChange={handleLocationInputChange} placeholder="https://..., https://..." />
+                                </div>
+
+                                <div className="modal-actions">
+                                    <button type="button" className="btn btn-outline" onClick={() => setShowLocationModal(false)}>
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="btn btn-yellow" disabled={locationSaving}>
+                                        {locationSaving ? <Loader size={16} className="animate-spin" /> : (editingLocationId ? 'Save Location' : 'Create Location')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {showCategoryModal && canManageEventCategories && (
+                    <div className="modal-overlay animate-fade-in">
+                        <div className="modal-content card">
+                            <div className="modal-header">
+                                <h2>{editingCategoryId ? 'Edit Category' : 'Create Category'}</h2>
+                                <button className="btn-icon" onClick={() => setShowCategoryModal(false)}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <form onSubmit={handleCategorySubmit} className="event-form">
+                                <div className="form-group">
+                                    <label>Category Name</label>
+                                    <input name="name" value={categoryForm.name} onChange={handleCategoryInputChange} required />
+                                </div>
+
+                                <div className="modal-actions">
+                                    <button type="button" className="btn btn-outline" onClick={() => setShowCategoryModal(false)}>
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="btn btn-yellow" disabled={categorySaving}>
+                                        {categorySaving ? <Loader size={16} className="animate-spin" /> : (editingCategoryId ? 'Save Category' : 'Create Category')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {showAdminModal && canManageAdmins && (
+                    <div className="modal-overlay animate-fade-in">
+                        <div className="modal-content card">
+                            <div className="modal-header">
+                                <h2>{editingAdminId ? 'Edit Admin Permissions' : 'Add New Admin'}</h2>
+                                <button className="btn-icon" onClick={() => setShowAdminModal(false)}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <form onSubmit={handleAdminSubmit} className="event-form">
+                                <div className="form-group">
+                                    <label>Enrollment Number</label>
+                                    <input
+                                        name="enrolment_number"
+                                        value={adminForm.enrolment_number}
+                                        onChange={handleAdminInputChange}
+                                        placeholder="Enter enrollment number"
+                                        required
+                                        disabled={Boolean(editingAdminId)}
+                                    />
+                                    {editingAdminId && (
+                                        <small style={{ color: 'var(--grey-500)', fontSize: '0.75rem', marginTop: '4px' }}>
+                                            {admins.find((item) => String(item.user_id) === String(editingAdminId))?.full_name || 'Selected user'}
+                                        </small>
+                                    )}
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Permissions</label>
+                                    <div className="category-chip-wrap">
+                                        {adminPermissions.length > 0 ? (
+                                            adminPermissions.map((permission) => {
+                                                const active = (adminForm.permission_ids || []).includes(Number(permission.id));
+                                                return (
+                                                    <button
+                                                        key={permission.id}
+                                                        type="button"
+                                                        className={`category-chip ${active ? 'active' : ''}`}
+                                                        onClick={() => toggleAdminPermission(Number(permission.id))}
+                                                    >
+                                                        {permission.name}
+                                                    </button>
+                                                );
+                                            })
+                                        ) : (
+                                            <span className="category-chip-empty">No admin permissions found.</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="modal-actions">
+                                    <button type="button" className="btn btn-outline" onClick={() => setShowAdminModal(false)}>
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="btn btn-yellow" disabled={adminSaving}>
+                                        {adminSaving ? <Loader size={16} className="animate-spin" /> : (editingAdminId ? 'Save Admin' : 'Create Admin')}
                                     </button>
                                 </div>
                             </form>

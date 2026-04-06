@@ -52,6 +52,39 @@
     color: var(--grey-400);
 }
 
+.home-mode-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.home-mode-wrap::-webkit-scrollbar {
+    display: none;
+}
+
+.home-mode-btn {
+    flex-shrink: 0;
+    border-radius: 999px;
+    border: 1.5px solid var(--grey-200);
+    background: white;
+    color: var(--grey-600);
+    padding: 7px 14px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+
+.home-mode-btn.active {
+    background: var(--brand-purple);
+    border-color: var(--brand-purple);
+    color: white;
+}
+
 /* Category Chips */
 .home-chips-wrap {
     display: flex;
@@ -92,6 +125,12 @@
     color: var(--brand-purple);
 }
 
+.home-chip-placeholder {
+    font-size: 0.82rem;
+    color: var(--grey-500);
+    white-space: nowrap;
+}
+
 /* Feed of cards */
 .home-feed {
     display: flex;
@@ -121,7 +160,9 @@
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Empty state */
@@ -146,8 +187,19 @@
     font-family: 'Roboto', sans-serif;
 }
 
-.see-more {
+.home-loading-more,
+.home-end-message {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 10px;
+    padding: 16px 0 8px;
+    color: var(--grey-500);
+    font-size: 0.85rem;
+}
+
+.home-scroll-sentinel {
+    width: 100%;
+    height: 1px;
 }

@@ -57,6 +57,34 @@
     justify-content: center;
 }
 
+.bottom-nav-avatar,
+.bottom-nav-avatar-fallback {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+.bottom-nav-avatar {
+    object-fit: cover;
+    border: 1.5px solid var(--grey-300);
+}
+
+.bottom-nav-avatar-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--brand-purple-pale);
+    color: var(--brand-purple);
+    font-size: 0.66rem;
+    font-weight: 800;
+    border: 1.5px solid var(--grey-300);
+}
+
+.bottom-nav-item.active .bottom-nav-avatar,
+.bottom-nav-item.active .bottom-nav-avatar-fallback {
+    border-color: var(--brand-purple);
+}
+
 .bottom-nav-badge {
     position: absolute;
     top: -6px;

@@ -1,12 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutGrid, Calendar, ShieldCheck, Bell } from 'lucide-react';
+import { LayoutGrid, Calendar, ShieldCheck, Building2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './BottomNav.css';
 
 const BottomNav = () => {
     const { user, notifications } = useAuth();
     const hasAlerts = notifications && notifications.length > 0;
+    const profileImageSrc = user?.display_picture
+        ? (user.display_picture.startsWith('http') ? user.display_picture : `https://channeli.in${user.display_picture}`)
+        : null;
+    const profileInitial = (user?.full_name || user?.email || 'U').charAt(0).toUpperCase();
 
     return (
         <nav className="bottom-nav">
@@ -20,6 +24,11 @@ const BottomNav = () => {
                 <span>Calendar</span>
             </NavLink>
 
+            <NavLink to="/clubs" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+                <Building2 size={22} />
+                <span>Clubs</span>
+            </NavLink>
+
             {user?.isAdmin && (
                 <NavLink to="/admin" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
                     <ShieldCheck size={22} />
@@ -27,12 +36,16 @@ const BottomNav = () => {
                 </NavLink>
             )}
 
-            <NavLink to="/alerts" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+            <NavLink to="/profile" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
                 <div className="bottom-nav-icon-wrap">
-                    <Bell size={22} />
+                    {profileImageSrc ? (
+                        <img src={profileImageSrc} alt="Profile" className="bottom-nav-avatar" />
+                    ) : (
+                        <div className="bottom-nav-avatar-fallback">{profileInitial}</div>
+                    )}
                     {hasAlerts && <span className="bottom-nav-badge">{notifications.length}</span>}
                 </div>
-                <span>Alerts</span>
+                <span>Profile</span>
             </NavLink>
         </nav>
     );

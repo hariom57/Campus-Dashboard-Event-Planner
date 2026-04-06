@@ -18,25 +18,22 @@ export const AuthProvider = ({ children }) => {
         // Check if user is logged in
         const checkAuth = async () => {
             try {
-                // 1. Initial Identity Check
+                // 1. Identity Check - includes admin status and other privileges from JWT
                 const userData = await authService.getCurrentUser();
-                
-                // 2. Fetch Privilege Details (if identity is confirmed)
-                let isAdmin = false;
-                let managedClubs = [];
-
-                if (userData) {
-                    try {
-                        isAdmin = await authService.getIsAdmin();
-                        if (isAdmin) {
-                            managedClubs = await authService.getManagedClubs();
-                        }
-                    } catch (privError) {
-                        // Suppress privilege fetch errors if not fully logged in or permission issue
-                    }
-                }
-
-                setUser({ ...userData, isAdmin, managedClubs });
+                setUser({
+                    ...userData,
+                    managedClubIds: Array.isArray(userData?.managedClubIds) ? userData.managedClubIds : [],
+                    canManageClubs: userData?.canManageClubs === true,
+                    canManageLocations: userData?.canManageLocations === true,
+                    canManageEventCategories: userData?.canManageEventCategories === true,
+                    canManageEvents: userData?.canManageEvents === true,
+                    canManageAdmins: userData?.canManageAdmins === true,
+                    canManageClubAdmins: userData?.canManageClubAdmins === true,
+                    preferredClubs: Array.isArray(userData?.preferredClubs) ? userData.preferredClubs : [],
+                    notPreferredClubs: Array.isArray(userData?.notPreferredClubs) ? userData.notPreferredClubs : [],
+                    preferredCategories: Array.isArray(userData?.preferredCategories) ? userData.preferredCategories : [],
+                    notPreferredCategories: Array.isArray(userData?.notPreferredCategories) ? userData.notPreferredCategories : [],
+                });
             } catch (error) {
                 // Identity fetch failed (401) is the expected path for logged-out users
                 setUser(null);
@@ -79,8 +76,21 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const updateUserPreferences = (nextPrefs) => {
+        setUser((prev) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                preferredClubs: Array.isArray(nextPrefs?.preferred_clubs) ? nextPrefs.preferred_clubs : prev.preferredClubs,
+                notPreferredClubs: Array.isArray(nextPrefs?.not_preferred_clubs) ? nextPrefs.not_preferred_clubs : prev.notPreferredClubs,
+                preferredCategories: Array.isArray(nextPrefs?.preferred_categories) ? nextPrefs.preferred_categories : prev.preferredCategories,
+                notPreferredCategories: Array.isArray(nextPrefs?.not_preferred_categories) ? nextPrefs.not_preferred_categories : prev.notPreferredCategories,
+            };
+        });
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout, notifications, toggleNotification }}>
+        <AuthContext.Provider value={{ user, loading, login, logout, notifications, toggleNotification, updateUserPreferences }}>
             {children}
         </AuthContext.Provider>
     );

@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, MapPin, Bell, BellOff, Plus } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { Clock, MapPin, CalendarDays } from 'lucide-react';
 import './EventCard.css';
 
 // Deterministic gradient per event id/name
@@ -37,9 +36,24 @@ const formatDate = (dateStr) => {
     return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' });
 };
 
+const formatRelativeDate = (dateStr) => {
+    const eventDate = new Date(dateStr);
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+
+    const eventDay = eventDate.toISOString().split('T')[0];
+    const todayDay = today.toISOString().split('T')[0];
+    const tomorrowDay = tomorrow.toISOString().split('T')[0];
+
+    if (eventDay === todayDay) return 'Today';
+    if (eventDay === tomorrowDay) return 'Tomorrow';
+
+    return formatDate(dateStr);
+};
+
 const EventCard = ({ event }) => {
     const navigate = useNavigate();
-    const { notifications, toggleNotification } = useAuth();
 
     const isAcademic = event.isAcademicCalendar;
 
@@ -49,27 +63,19 @@ const EventCard = ({ event }) => {
         return GRADIENTS[idx];
     }, [event.id]);
 
-    const primaryCategory = event.categories
-        ? event.categories.split(',')[0].trim()
-        : 'General';
+    const categoryList = Array.isArray(event.categories)
+        ? event.categories.map((item) => (typeof item === 'string' ? item : item?.name)).filter(Boolean)
+        : (typeof event.categories === 'string'
+            ? event.categories.split(',').map((item) => item.trim()).filter(Boolean)
+            : []);
+
+    const primaryCategory = categoryList.length > 0 ? categoryList[0] : 'General';
 
     const categoryColor = CATEGORY_COLORS[primaryCategory] || '#607d8b';
 
-    const isNotified = notifications?.some(n => n.id === event.id);
-
-    const handleRsvp = (e) => {
-        e.stopPropagation();
-        toggleNotification({
-            id: event.id,
-            title: event.name,
-            time: formatTime(event.tentative_start_time),
-            date: formatDate(event.tentative_start_time),
-        });
-    };
-
     return (
-        <div 
-            className={`event-card-new ${isAcademic ? 'academic-card' : ''}`} 
+        <div
+            className={`event-card-new ${isAcademic ? 'academic-card' : ''}`}
             onClick={() => !isAcademic && navigate(`/event/${event.id}`)}
             style={isAcademic ? { cursor: 'default' } : {}}
         >
@@ -97,38 +103,25 @@ const EventCard = ({ event }) => {
 
                 <div className="event-card-club-row">
                     <div className="event-club-avatar" style={isAcademic ? { background: categoryColor, color: 'white' } : {}}>
-                        {(event.club_name || 'C').charAt(0).toUpperCase()}
+                        {(event.club_name || 'U').charAt(0).toUpperCase()}
                     </div>
-                    <span className="event-club-name">{event.club_name || 'Campus Event'}</span>
+                    <span className="event-club-name">{event.club_name || 'Unknown Club'}</span>
                 </div>
 
                 <div className="event-card-meta">
                     <span className="event-meta-item">
+                        <CalendarDays size={13} />
+                        {formatRelativeDate(event.tentative_start_time)}
+                    </span>
+                    <span className="event-meta-item">
                         <Clock size={13} />
                         {event.isAllDay ? 'ALL DAY' : formatTime(event.tentative_start_time)}
                     </span>
-                    {event.location_name && (
-                        <span className="event-meta-item">
-                            <MapPin size={13} />
-                            {event.location_name}
-                        </span>
-                    )}
+                    <span className="event-meta-item">
+                        <MapPin size={13} />
+                        {event.location_name || 'Location TBA'}
+                    </span>
                 </div>
-
-                {/* Hide RSVP for academic calendar events */}
-                {!isAcademic && (
-                    <button
-                        className={`event-rsvp-btn ${isNotified ? 'notified' : ''}`}
-                        onClick={handleRsvp}
-                        title={isNotified ? 'Remove reminder' : 'Set reminder / RSVP'}
-                    >
-                        {isNotified ? (
-                            <><BellOff size={14} /> Reminded</>
-                        ) : (
-                            <><Plus size={14} /> RSVP</>
-                        )}
-                    </button>
-                )}
             </div>
         </div>
     );
