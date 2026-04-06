@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    ArrowLeft, Share2, Calendar, Clock, MapPin, Loader
+    ArrowLeft, Share2, Calendar, Clock, MapPin, Loader, Bell, BellRing
 } from 'lucide-react';
 import eventService from '../services/events';
+import eventReminderService from '../services/eventReminders';
+import { shareEvent, shareEventOnWhatsApp } from '../services/shareEvent';
+import WhatsAppIcon from '../components/Icons/WhatsAppIcon';
 import './EventDetail.css';
 
 const GRADIENTS = [
@@ -51,14 +54,55 @@ const EventDetail = () => {
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
     const [expanded, setExpanded] = useState(false);
+    const [isReminderEnabled, setIsReminderEnabled] = useState(false);
 
     useEffect(() => {
         if (!eventId) return;
         setLoading(true);
         eventService.getEventById(eventId)
-            .then(data => { setEvent(data); setLoading(false); })
+            .then(data => {
+                setEvent(data);
+                setIsReminderEnabled(data ? eventReminderService.isReminderEnabled(data.id) : false);
+                if (data) {
+                    eventReminderService.updateReminderSnapshot(data);
+                }
+                setLoading(false);
+            })
             .catch(() => setLoading(false));
     }, [eventId]);
+
+    const handleToggleReminder = async () => {
+        if (!event) return;
+
+        const result = await eventReminderService.toggleReminder(event);
+        setIsReminderEnabled(result.enabled);
+
+        if (result.error === 'unsupported') {
+            window.alert('Notifications are not supported on this browser.');
+        }
+
+        if (result.error === 'permission-denied') {
+            window.alert('Please allow notifications in browser settings to get reminders.');
+        }
+
+        if (result.error === 'event-started') {
+            window.alert('This event has already started, so reminders cannot be scheduled.');
+        }
+    };
+
+    const handleShareEvent = async () => {
+        if (!event) return;
+
+        const result = await shareEvent(event);
+        if (result.method === 'clipboard') {
+            window.alert('Event link copied to clipboard.');
+        }
+    };
+
+    const handleWhatsAppShare = () => {
+        if (!event) return;
+        shareEventOnWhatsApp(event);
+    };
 
     if (loading) {
         return (
@@ -89,6 +133,7 @@ const EventDetail = () => {
     const descriptionWords = event.description ? event.description.split(' ') : [];
     const shortDesc = descriptionWords.slice(0, 40).join(' ');
     const isLong = descriptionWords.length > 40;
+    const canSetReminder = Boolean(event?.tentative_start_time) && !event?.isAllDay;
 
     return (
         <div className="event-detail-page">
@@ -98,9 +143,22 @@ const EventDetail = () => {
                     <button className="event-detail-back-btn" onClick={() => navigate(-1)}>
                         <ArrowLeft size={20} />
                     </button>
-                    <button className="event-detail-share-btn" title="Share">
-                        <Share2 size={18} />
-                    </button>
+                    <div className="event-detail-right-actions">
+                        <button
+                            className={`event-detail-reminder-btn ${isReminderEnabled ? 'enabled' : ''}`}
+                            onClick={handleToggleReminder}
+                            title={canSetReminder ? 'Notify 30 min and 5 min before' : 'Reminders unavailable for all-day events'}
+                            disabled={!canSetReminder}
+                        >
+                            {isReminderEnabled ? <BellRing size={18} /> : <Bell size={18} />}
+                        </button>
+                        <button className="event-detail-whatsapp-btn" title="Share on WhatsApp" onClick={handleWhatsAppShare}>
+                            <WhatsAppIcon size={16} />
+                        </button>
+                        <button className="event-detail-share-btn" title="Share" onClick={handleShareEvent}>
+                            <Share2 size={18} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Category Badges */}

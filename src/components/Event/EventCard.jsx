@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, MapPin, CalendarDays } from 'lucide-react';
+import { Clock, MapPin, CalendarDays, Bell, BellRing, Share2 } from 'lucide-react';
+import { shareEvent, shareEventOnWhatsApp } from '../../services/shareEvent';
+import WhatsAppIcon from '../Icons/WhatsAppIcon';
 import './EventCard.css';
 
 // Deterministic gradient per event id/name
@@ -52,7 +54,7 @@ const formatRelativeDate = (dateStr) => {
     return formatDate(dateStr);
 };
 
-const EventCard = ({ event }) => {
+const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
     const navigate = useNavigate();
 
     const isAcademic = event.isAcademicCalendar;
@@ -73,18 +75,62 @@ const EventCard = ({ event }) => {
 
     const categoryColor = CATEGORY_COLORS[primaryCategory] || '#607d8b';
 
+    const canSetReminder = Boolean(event?.tentative_start_time) && !event?.isAllDay;
+
+    const handleReminderClick = (evt) => {
+        evt.stopPropagation();
+        if (!canSetReminder || !onToggleReminder) return;
+        onToggleReminder(event);
+    };
+
+    const handleShareClick = async (evt) => {
+        evt.stopPropagation();
+        const result = await shareEvent(event);
+        if (result.method === 'clipboard') {
+            window.alert('Event link copied to clipboard.');
+        }
+    };
+
+    const handleWhatsAppShare = (evt) => {
+        evt.stopPropagation();
+        shareEventOnWhatsApp(event);
+    };
+
     return (
         <div
             className={`event-card-new ${isAcademic ? 'academic-card' : ''}`}
             onClick={() => !isAcademic && navigate(`/event/${event.id}`)}
             style={isAcademic ? { cursor: 'default' } : {}}
         >
+            {isAcademic && (
+                <button
+                    type="button"
+                    className={`event-reminder-btn event-reminder-btn--academic ${isReminderEnabled ? 'enabled' : ''}`}
+                    aria-label={isReminderEnabled ? 'Disable reminders' : 'Enable reminders'}
+                    onClick={handleReminderClick}
+                    title={canSetReminder ? 'Notify me 30 min and 5 min before' : 'Reminders unavailable for all-day events'}
+                    disabled={!canSetReminder}
+                >
+                    {isReminderEnabled ? <BellRing size={14} /> : <Bell size={14} />}
+                </button>
+            )}
+
             {/* Banner - Only for non-academic events */}
             {!isAcademic && (
                 <div className="event-card-banner" style={{ background: gradient }}>
                     <span className="event-category-badge" style={{ background: categoryColor }}>
                         {primaryCategory}
                     </span>
+                    <button
+                        type="button"
+                        className={`event-reminder-btn ${isReminderEnabled ? 'enabled' : ''}`}
+                        aria-label={isReminderEnabled ? 'Disable reminders' : 'Enable reminders'}
+                        onClick={handleReminderClick}
+                        title={canSetReminder ? 'Notify me 30 min and 5 min before' : 'Reminders unavailable for all-day events'}
+                        disabled={!canSetReminder}
+                    >
+                        {isReminderEnabled ? <BellRing size={15} /> : <Bell size={15} />}
+                    </button>
                 </div>
             )}
 
@@ -122,6 +168,29 @@ const EventCard = ({ event }) => {
                         {event.location_name || 'Location TBA'}
                     </span>
                 </div>
+
+                {!isAcademic && (
+                    <div className="event-card-footer">
+                        <button
+                            type="button"
+                            className="event-share-btn event-share-btn--bottom event-share-btn--whatsapp"
+                            aria-label="Share on WhatsApp"
+                            onClick={handleWhatsAppShare}
+                            title="Share on WhatsApp"
+                        >
+                            <WhatsAppIcon size={14} />
+                        </button>
+                        <button
+                            type="button"
+                            className="event-share-btn event-share-btn--bottom event-share-btn--icon"
+                            aria-label="Share event"
+                            onClick={handleShareClick}
+                            title="Share event"
+                        >
+                            <Share2 size={14} />
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

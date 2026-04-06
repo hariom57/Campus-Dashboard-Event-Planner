@@ -24,8 +24,16 @@
     justify-content: space-between;
 }
 
+.event-detail-right-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .event-detail-back-btn,
-.event-detail-share-btn {
+.event-detail-share-btn,
+.event-detail-reminder-btn,
+.event-detail-whatsapp-btn {
     width: 38px;
     height: 38px;
     border-radius: 50%;
@@ -41,8 +49,31 @@
 }
 
 .event-detail-back-btn:hover,
-.event-detail-share-btn:hover {
+.event-detail-share-btn:hover,
+.event-detail-whatsapp-btn:hover,
+.event-detail-reminder-btn:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.35);
+}
+
+.event-detail-whatsapp-btn {
+    color: #0f9d58;
+    border: 1px solid rgba(15, 157, 88, 0.35);
+    background: rgba(15, 157, 88, 0.08);
+}
+
+.event-detail-whatsapp-btn:hover {
+    background: rgba(15, 157, 88, 0.16);
+    border-color: rgba(15, 157, 88, 0.45);
+}
+
+.event-detail-reminder-btn.enabled {
+    background: rgba(255, 215, 0, 0.92);
+    color: #3e2550;
+}
+
+.event-detail-reminder-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 .event-detail-badges {

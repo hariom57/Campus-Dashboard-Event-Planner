@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Campus Event Dashboard icon 192">
+  <defs>
+    <linearGradient id="bg192" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a7c5c" />
+      <stop offset="1" stop-color="#2aa879" />
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="42" fill="url(#bg192)" />
+  <circle cx="96" cy="78" r="35" fill="#f7fff9" opacity="0.9" />
+  <path d="M54 110h84a7 7 0 0 1 7 7v35H47v-35a7 7 0 0 1 7-7z" fill="#f7fff9" />
+  <rect x="66" y="123" width="60" height="7" rx="3.5" fill="#0a7c5c" />
+  <rect x="66" y="135" width="43" height="7" rx="3.5" fill="#0a7c5c" opacity="0.82" />
+  <path d="M74 50v11M118 50v11" stroke="#f7fff9" stroke-width="8" stroke-linecap="round" />
+</svg>

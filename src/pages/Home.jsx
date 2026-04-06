@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import EventCard from '../components/Event/EventCard';
 import eventService from '../services/events';
 import academicCalendarService from '../services/academicCalendar';
+import eventReminderService from '../services/eventReminders';
 import { useAuth } from '../context/AuthContext';
 import './Home.css';
 
@@ -41,6 +42,7 @@ const Home = () => {
     const [prefMode, setPrefMode] = useState(PREF_MODES.ALL);
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
+    const [reminderEventIds, setReminderEventIds] = useState(() => new Set(eventReminderService.getReminderIds()));
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [initialLoaded, setInitialLoaded] = useState(false);
@@ -125,6 +127,11 @@ const Home = () => {
         if (!initialLoaded || page === 1 || !hasMore || loadingMore) return;
         fetchDynamicPage(page);
     }, [page, hasMore, loadingMore, initialLoaded, fetchDynamicPage]);
+
+    useEffect(() => {
+        eventReminderService.scheduleStoredReminders();
+        setReminderEventIds(new Set(eventReminderService.getReminderIds()));
+    }, []);
 
     useEffect(() => {
         const sentinel = sentinelRef.current;
@@ -222,6 +229,29 @@ const Home = () => {
         return matchesCategorySelection && matchesPreferenceMode && matchesSearch;
     });
 
+    useEffect(() => {
+        filteredEvents.forEach((event) => {
+            eventReminderService.updateReminderSnapshot(event);
+        });
+    }, [filteredEvents]);
+
+    const handleToggleReminder = async (event) => {
+        const result = await eventReminderService.toggleReminder(event);
+        setReminderEventIds(new Set(eventReminderService.getReminderIds()));
+
+        if (result.error === 'unsupported') {
+            window.alert('Notifications are not supported on this browser.');
+        }
+
+        if (result.error === 'permission-denied') {
+            window.alert('Please allow notifications in browser settings to get reminders.');
+        }
+
+        if (result.error === 'event-started') {
+            window.alert('This event has already started, so reminders cannot be scheduled.');
+        }
+    };
+
     return (
         <div className="home-page">
             {/* Top Header Bar */}
@@ -314,7 +344,12 @@ const Home = () => {
                     </div>
                 ) : (
                     filteredEvents.map(ev => (
-                        <EventCard key={ev.id} event={ev} />
+                        <EventCard
+                            key={ev.id}
+                            event={ev}
+                            isReminderEnabled={reminderEventIds.has(String(ev.id))}
+                            onToggleReminder={handleToggleReminder}
+                        />
                     ))
                 )}
 

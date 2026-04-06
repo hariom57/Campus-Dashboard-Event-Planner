@@ -93,6 +93,47 @@ const initializeSchema = async () => {
         // alter: false = safe for existing DBs, never modifies existing columns.
         await sequelize.sync({ alter: false });
 
+        // Normalize legacy timestamp columns to timestamptz so event times are timezone-safe.
+        await sequelize.query(`
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = 'no_overlapping_events_at_location'
+                ) THEN
+                    ALTER TABLE event DROP CONSTRAINT no_overlapping_events_at_location;
+                END IF;
+
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'event'
+                      AND column_name = 'tentative_start_time'
+                      AND data_type = 'timestamp without time zone'
+                ) THEN
+                    ALTER TABLE event
+                    ALTER COLUMN tentative_start_time TYPE TIMESTAMPTZ
+                    USING tentative_start_time AT TIME ZONE 'Asia/Kolkata';
+                END IF;
+
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'event'
+                      AND column_name = 'actual_start_time'
+                      AND data_type = 'timestamp without time zone'
+                ) THEN
+                    ALTER TABLE event
+                    ALTER COLUMN actual_start_time TYPE TIMESTAMPTZ
+                    USING actual_start_time AT TIME ZONE 'Asia/Kolkata';
+                END IF;
+            END
+            $$;
+        `);
+
         // for (const [label, createFn] of schemaSteps) {
         //     await createFn(sql);
         //     console.log(`✅ ${label} table initialized`);

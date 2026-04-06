@@ -14,27 +14,66 @@ const PORT = process.env.PORT || 8081;
 // Trust proxies (Render/Heroku/Nginx) so secure cookies work behind their load balancers
 app.set('trust proxy', 1);
 
-const allowedOrigins = (process.env.FRONTEND_URL || '')
-    .split(',')
-    .map(origin => origin.trim())
+const normalizeOrigin = (value = '') => value.trim().replace(/\/$/, '');
+
+const allowedOrigins = [
+    ...(process.env.FRONTEND_URL || '').split(','),
+    ...(process.env.CORS_ALLOWED_ORIGINS || '').split(','),
+]
+    .map(normalizeOrigin)
     .filter(Boolean);
 
-app.use(cors({
+const allowedOriginSet = new Set(allowedOrigins);
+
+const allowedOriginRegexes = (process.env.CORS_ALLOWED_ORIGIN_REGEX || '')
+    .split(',')
+    .map((pattern) => pattern.trim())
+    .filter(Boolean)
+    .flatMap((pattern) => {
+        try {
+            return [new RegExp(pattern, 'i')];
+        } catch (error) {
+            console.warn(`Invalid CORS regex skipped: ${pattern}`);
+            return [];
+        }
+    });
+
+const allowVercelPreviews = process.env.ALLOW_VERCEL_PREVIEWS !== 'false';
+const vercelPreviewRegex = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
+const localOriginRegex = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+
+const corsOptions = {
     origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl)
+        // Allow requests with no origin (curl/server-to-server/health checks)
         if (!origin) return callback(null, true);
-        
-        // Auto-allow localhost and 127.0.0.1 for development
-        const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
-        
-        if (isLocal || allowedOrigins.includes(origin)) {
+
+        const normalizedOrigin = normalizeOrigin(origin);
+
+        if (localOriginRegex.test(normalizedOrigin)) {
             return callback(null, true);
         }
 
-        return callback(new Error('Not allowed by CORS'));
+        if (allowVercelPreviews && vercelPreviewRegex.test(normalizedOrigin)) {
+            return callback(null, true);
+        }
+
+        if (allowedOriginSet.has(normalizedOrigin)) {
+            return callback(null, true);
+        }
+
+        if (allowedOriginRegexes.some((regex) => regex.test(normalizedOrigin))) {
+            return callback(null, true);
+        }
+
+        return callback(new Error(`Not allowed by CORS: ${normalizedOrigin}`));
     },
     credentials: true,
-}));
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(

@@ -44,6 +44,38 @@ const normalizeCategoryIds = (categoryIds) => {
         .filter((id) => Number.isInteger(id) && id > 0);
 };
 
+const normalizeEventTimestamp = (value) => {
+    if (value === undefined || value === null || value === '') return null;
+
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value.toISOString();
+    }
+
+    const raw = String(value).trim();
+    if (!raw) return null;
+
+    const naiveMatch = raw.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::(\d{2}))?(?:\.\d+)?$/);
+    if (naiveMatch) {
+        const [, datePart, timePart, secondPart] = naiveMatch;
+        // Interpret naive values as IST wall-clock for backward compatibility.
+        const withOffset = `${datePart}T${timePart}:${secondPart || '00'}+05:30`;
+        const parsedNaive = new Date(withOffset);
+        if (Number.isNaN(parsedNaive.getTime())) return null;
+        return parsedNaive.toISOString();
+    }
+
+    const zonedMatch = raw.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/i);
+    if (zonedMatch) {
+        const parsed = new Date(raw);
+        if (Number.isNaN(parsed.getTime())) return null;
+        return parsed.toISOString();
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.toISOString();
+};
+
 // Protected route to get all current events
 router.get('/all', userLoggedIn, async (req, res) => {
     try {
@@ -594,9 +626,31 @@ router.patch('/:eventId', checkEventPermission, async (req, res) => {
         if (name !== undefined) updateData.name = name;
         if (club_id !== undefined) updateData.club_id = club_id;
         if (location_id !== undefined) updateData.location_id = location_id;
-        if (tentative_start_time !== undefined) updateData.tentative_start_time = tentative_start_time;
+        if (tentative_start_time !== undefined) {
+            const normalizedStart = normalizeEventTimestamp(tentative_start_time);
+            if (!normalizedStart) {
+                return res.status(400).json({
+                    error: 'Bad request',
+                    message: 'Invalid tentative_start_time format'
+                });
+            }
+            updateData.tentative_start_time = normalizedStart;
+        }
         if (duration_minutes !== undefined) updateData.duration_minutes = duration_minutes;
-        if (actual_start_time !== undefined) updateData.actual_start_time = actual_start_time;
+        if (actual_start_time !== undefined) {
+            if (actual_start_time === null || actual_start_time === '') {
+                updateData.actual_start_time = null;
+            } else {
+                const normalizedActual = normalizeEventTimestamp(actual_start_time);
+                if (!normalizedActual) {
+                    return res.status(400).json({
+                        error: 'Bad request',
+                        message: 'Invalid actual_start_time format'
+                    });
+                }
+                updateData.actual_start_time = normalizedActual;
+            }
+        }
         if (description !== undefined) updateData.description = description;
 
         if (Object.keys(updateData).length === 0) {
@@ -720,6 +774,24 @@ router.post('/add', checkEventPermission, async (req, res) => {
         }
 
         const normalizedCategoryIds = normalizeCategoryIds(category_ids);
+        const normalizedTentativeStartTime = normalizeEventTimestamp(tentative_start_time);
+        const normalizedActualStartTime = actual_start_time
+            ? normalizeEventTimestamp(actual_start_time)
+            : null;
+
+        if (!normalizedTentativeStartTime) {
+            return res.status(400).json({
+                error: 'Bad request',
+                message: 'Invalid tentative_start_time format'
+            });
+        }
+
+        if (actual_start_time && !normalizedActualStartTime) {
+            return res.status(400).json({
+                error: 'Bad request',
+                message: 'Invalid actual_start_time format'
+            });
+        }
 
         let createdEvent;
         await sequelize.transaction(async (t) => {
@@ -727,9 +799,9 @@ router.post('/add', checkEventPermission, async (req, res) => {
                 name,
                 club_id,
                 location_id: location_id || null,
-                tentative_start_time,
+                tentative_start_time: normalizedTentativeStartTime,
                 duration_minutes,
-                actual_start_time: actual_start_time || null,
+                actual_start_time: normalizedActualStartTime,
                 description: description || null
             }, { transaction: t });
 

@@ -12,6 +12,29 @@ import adminsService from '../services/admins';
 import clubAdminsService from '../services/clubAdmins';
 import './Admin.css';
 
+const pad2 = (value) => String(value).padStart(2, '0');
+
+const formatDateInputLocal = (date) => {
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+};
+
+const formatTimeInputLocal = (date) => {
+    return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+};
+
+const buildDateTimeWithOffset = (datePart, timePart) => {
+    const localDate = new Date(`${datePart}T${timePart}`);
+    if (Number.isNaN(localDate.getTime())) return null;
+
+    const offsetMinutes = -localDate.getTimezoneOffset();
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const absOffset = Math.abs(offsetMinutes);
+    const offsetHours = Math.floor(absOffset / 60);
+    const offsetMins = absOffset % 60;
+
+    return `${datePart}T${timePart}:00${sign}${pad2(offsetHours)}:${pad2(offsetMins)}`;
+};
+
 const Admin = () => {
     const { user, loading: authLoading } = useAuth();
     const navigate = useNavigate();
@@ -199,14 +222,18 @@ const Admin = () => {
         setLoading(true);
 
         try {
-            // Combine date and time for tentative_start_time
-            const startDateTime = new Date(`${newEvent.date}T${newEvent.time}`);
+            const tentativeStartTime = buildDateTimeWithOffset(newEvent.date, newEvent.time);
+
+            if (!tentativeStartTime) {
+                alert('Please enter a valid date and time.');
+                return;
+            }
 
             const payload = {
                 name: newEvent.name,
                 club_id: parseInt(newEvent.club_id),
                 location_id: parseInt(newEvent.location_id),
-                tentative_start_time: startDateTime.toISOString(),
+                tentative_start_time: tentativeStartTime,
                 duration_minutes: parseInt(newEvent.duration_minutes),
                 description: newEvent.description,
                 category_ids: Array.isArray(newEvent.category_ids) ? newEvent.category_ids : []
@@ -284,8 +311,8 @@ const Admin = () => {
             name: event.name,
             club_id: resolvedClubId ? String(resolvedClubId) : '',
             location_id: resolvedLocationId ? String(resolvedLocationId) : '',
-            date: dateObj.toISOString().split('T')[0],
-            time: dateObj.toTimeString().slice(0, 5),
+            date: formatDateInputLocal(dateObj),
+            time: formatTimeInputLocal(dateObj),
             duration_minutes: event.duration_minutes,
             description: event.description || '',
             category_ids: categoryIds

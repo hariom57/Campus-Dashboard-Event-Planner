@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import BottomNav from './components/Layout/BottomNav';
+import eventReminderService from './services/eventReminders';
 import Home from './pages/Home';
 import CalendarPage from './pages/Calendar';
 import Admin from './pages/Admin';
@@ -9,6 +10,7 @@ import ClubsPage from './pages/Clubs';
 import LandingPage from './pages/LandingPage';
 import ProfilePage from './pages/Profile';
 import EventDetail from './pages/EventDetail';
+import InstallPrompt from './components/Widgets/InstallPrompt';
 import './App.css';
 
 // Shell layout that wraps pages needing the bottom navigation
@@ -24,6 +26,10 @@ const AppShell = ({ children }) => {
 };
 
 function App() {
+    useEffect(() => {
+        eventReminderService.scheduleStoredReminders();
+    }, []);
+
     return (
         <Router>
             <AuthProvider>
@@ -39,6 +45,7 @@ function App() {
                     <Route path="/admin" element={<AppShell><Admin /></AppShell>} />
                     <Route path="/event/:eventId" element={<AppShell><EventDetail /></AppShell>} />
                 </Routes>
+                <InstallPrompt />
             </AuthProvider>
         </Router>
     );
