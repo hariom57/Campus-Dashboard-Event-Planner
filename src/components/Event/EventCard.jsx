@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, MapPin, CalendarDays, Bell, BellRing, Share2 } from 'lucide-react';
+import { Clock, MapPin, CalendarDays, Bell, BellRing, Share2, Pointer } from 'lucide-react';
 import { shareEvent, shareEventOnWhatsApp } from '../../services/shareEvent';
 import WhatsAppIcon from '../Icons/WhatsAppIcon';
 import './EventCard.css';
@@ -59,11 +59,16 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
 
     const isAcademic = event.isAcademicCalendar;
 
-    const gradient = useMemo(() => {
-        const idVal = typeof event.id === 'string' ? event.id.length : (event.id || 0);
-        const idx = idVal % GRADIENTS.length;
-        return GRADIENTS[idx];
-    }, [event.id]);
+    const numericId = typeof event.id === 'string' ? parseInt(event.id.replace(/\D/g, '')) || event.id.length : event.id;
+    const fallbackGradient = GRADIENTS[(numericId || 0) % GRADIENTS.length];
+    
+    const bannerStyle = event.image_url 
+        ? { 
+            background: `linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.7)), url(${event.image_url})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }
+        : { background: fallbackGradient };
 
     const categoryList = Array.isArray(event.categories)
         ? event.categories.map((item) => (typeof item === 'string' ? item : item?.name)).filter(Boolean)
@@ -98,9 +103,9 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
 
     return (
         <div
-            className={`event-card-new ${isAcademic ? 'academic-card' : ''}`}
-            onClick={() => !isAcademic && navigate(`/event/${event.id}`)}
-            style={isAcademic ? { cursor: 'default' } : {}}
+            className={`event-card-new`}
+            onClick={() => navigate(`/event/${event.id}`)}
+            style={{ cursor: 'pointer' }}
         >
             {isAcademic && (
                 <button
@@ -117,7 +122,7 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
 
             {/* Banner - Only for non-academic events */}
             {!isAcademic && (
-                <div className="event-card-banner" style={{ background: gradient }}>
+                <div className="event-card-banner" style={bannerStyle}>
                     <span className="event-category-badge" style={{ background: categoryColor }}>
                         {primaryCategory}
                     </span>
@@ -147,11 +152,12 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
 
                 <h3 className="event-card-title">{event.name}</h3>
 
-                <div className="event-card-club-row">
-                    <div className="event-club-avatar" style={isAcademic ? { background: categoryColor, color: 'white' } : {}}>
-                        {(event.club_name || 'U').charAt(0).toUpperCase()}
-                    </div>
-                    <span className="event-club-name">{event.club_name || 'Unknown Club'}</span>
+                <div className="event-club-avatar" style={isAcademic ? { background: categoryColor, color: 'white' } : { overflow: 'hidden' }}>
+                    {event.club_logo_url || event.logo_url ? (
+                        <img src={event.club_logo_url || event.logo_url} alt={event.club_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                        (event.club_name || 'U').charAt(0).toUpperCase()
+                    )}
                 </div>
 
                 <div className="event-card-meta">

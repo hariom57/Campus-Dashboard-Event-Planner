@@ -11,6 +11,7 @@ import clubsService from '../services/clubs';
 import adminsService from '../services/admins';
 import clubAdminsService from '../services/clubAdmins';
 import './Admin.css';
+import { uploadImageToCDN } from '../services/upload';
 
 const pad2 = (value) => String(value).padStart(2, '0');
 
@@ -84,7 +85,8 @@ const Admin = () => {
         time: '',
         duration_minutes: 60,
         description: '',
-        category_ids: []
+        category_ids: [], 
+        image_url: ''
     });
 
     const [locationForm, setLocationForm] = useState({
@@ -193,6 +195,22 @@ const Admin = () => {
         }
     };
 
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            setLoading(true)
+            const imageUrl = await uploadImageToCDN(file);
+            setNewEvent(prev => ({ ...prev, image_url: imageUrl }));
+            alert("Image uploaded successfully!");
+        } catch (err) {
+            alert("Failed to upload image. Please try again.");
+        } finally {
+            setLoading(false)
+        }
+    };
+
     const fetchLocations = async () => {
         try {
             const data = await miscService.getAllLocations();
@@ -236,7 +254,8 @@ const Admin = () => {
                 tentative_start_time: tentativeStartTime,
                 duration_minutes: parseInt(newEvent.duration_minutes),
                 description: newEvent.description,
-                category_ids: Array.isArray(newEvent.category_ids) ? newEvent.category_ids : []
+                category_ids: Array.isArray(newEvent.category_ids) ? newEvent.category_ids : [],
+                image_url: newEvent.image_url,
             };
 
             if (editingEventId) {
@@ -250,7 +269,7 @@ const Admin = () => {
 
             setShowCreateModal(false);
             setEditingEventId(null);
-            setNewEvent({ name: '', club_id: '', location_id: '', date: '', time: '', duration_minutes: 60, description: '', category_ids: [] });
+            setNewEvent({ name: '', club_id: '', location_id: '', date: '', time: '', duration_minutes: 60, description: '', category_ids: [], image_url: '' });
             fetchEvents();
         } catch (error) {
             console.error("Failed to save event", error);
@@ -315,7 +334,8 @@ const Admin = () => {
             time: formatTimeInputLocal(dateObj),
             duration_minutes: event.duration_minutes,
             description: event.description || '',
-            category_ids: categoryIds
+            category_ids: categoryIds,
+            image_url: event.image_url
         });
         setEditingEventId(event.id);
         setShowCreateModal(true);
@@ -336,7 +356,7 @@ const Admin = () => {
     const openCreateModal = () => {
         if (!canManageEvents) return;
         setEditingEventId(null);
-        setNewEvent({ name: '', club_id: '', location_id: '', date: '', time: '', duration_minutes: 60, description: '', category_ids: [] });
+        setNewEvent({ name: '', club_id: '', location_id: '', date: '', time: '', duration_minutes: 60, description: '', category_ids: [], image_url: '' });
         setShowCreateModal(true);
     };
 
@@ -1104,15 +1124,25 @@ const Admin = () => {
                             </div>
                             <form onSubmit={handleSubmit} className="event-form">
                                 <div className="form-group">
-                                    <label>Event Title</label>
-                                    <input
-                                        type="text"
-                                        name="name"
-                                        value={newEvent.name}
-                                        onChange={handleInputChange}
-                                        placeholder="e.g. Intro to Machine Learning"
-                                        required
-                                    />
+                                    <label>Event Banner Image</label>
+                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            onChange={handleImageUpload} 
+                                            style={{ flex: 1, padding: '8px', border: '1px dashed var(--grey-300)' }} 
+                                        />
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--grey-500)' }}>OR</span>
+                                        <input
+                                            type="text"
+                                            name="image_url"
+                                            value={newEvent.image_url || ''}
+                                            onChange={handleInputChange}
+                                            placeholder="Paste Image URL"
+                                            style={{ flex: 1 }}
+                                        />
+                                    </div>
+                                    {newEvent.image_url && <img src={newEvent.image_url} alt="Preview" style={{ marginTop: '10px', maxHeight: '100px', borderRadius: '8px', objectFit: 'cover' }} />}
                                 </div>
 
                                 <div className="form-group">

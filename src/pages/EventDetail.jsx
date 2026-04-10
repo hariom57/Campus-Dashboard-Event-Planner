@@ -8,6 +8,7 @@ import eventReminderService from '../services/eventReminders';
 import { shareEvent, shareEventOnWhatsApp } from '../services/shareEvent';
 import WhatsAppIcon from '../components/Icons/WhatsAppIcon';
 import './EventDetail.css';
+import academicCalendarService from '../services/academicCalendar';
 
 const GRADIENTS = [
     'linear-gradient(145deg, #713364 0%, #4a1d3f 100%)',
@@ -59,16 +60,37 @@ const EventDetail = () => {
     useEffect(() => {
         if (!eventId) return;
         setLoading(true);
-        eventService.getEventById(eventId)
-            .then(data => {
-                setEvent(data);
-                setIsReminderEnabled(data ? eventReminderService.isReminderEnabled(data.id) : false);
-                if (data) {
-                    eventReminderService.updateReminderSnapshot(data);
+
+        if (eventId.startsWith('academic-')) {
+            const rawId = eventId.replace('academic-', '');
+            academicCalendarService.getAllEvents().then(data => {
+                const ae = data.find(e => String(e.id) === rawId);
+                if (ae) {
+                    setEvent({
+                        id: `academic-${ae.id}`,
+                        name: ae.title,
+                        tentative_start_time: ae.startDate + 'T00:00:00',
+                        tentative_end_time: ae.endDate + 'T23:59:59',
+                        description: ae.description,
+                        categories: ae.category,
+                        location_name: ae.isHoliday ? 'Institute Holiday' : 'Campus-wide',
+                        isAcademicCalendar: true,
+                        isAllDay: true,
+                        club_name: 'IIT Roorkee',
+                    });
                 }
                 setLoading(false);
-            })
-            .catch(() => setLoading(false));
+            }).catch(() => setLoading(false));
+        } else {
+            eventService.getEventById(eventId)
+                .then(data => {
+                    setEvent(data);
+                    setIsReminderEnabled(data ? eventReminderService.isReminderEnabled(data.id) : false);
+                    if (data) eventReminderService.updateReminderSnapshot(data);
+                    setLoading(false);
+                })
+                .catch(() => setLoading(false));
+        }
     }, [eventId]);
 
     const handleToggleReminder = async () => {
@@ -121,14 +143,22 @@ const EventDetail = () => {
         );
     }
 
-    const gradient = GRADIENTS[(event.id || 0) % GRADIENTS.length];
+    const numericId = typeof event.id === 'string' ? parseInt(event.id.replace(/\D/g, '')) || event.id.length : event.id;
+    const fallbackGradient = GRADIENTS[(numericId || 0) % GRADIENTS.length];
+    
+    const bannerStyle = event.image_url 
+        ? { 
+            background: `linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.8)), url(${event.image_url})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }
+        : { background: fallbackGradient };
+
     const categories = Array.isArray(event.categories)
         ? event.categories.map((item) => (typeof item === 'string' ? item : item?.name)).filter(Boolean)
         : (typeof event.categories === 'string'
             ? event.categories.split(',').map((s) => s.trim()).filter(Boolean)
             : ['General']);
-    const primaryCat = categories[0];
-    const catColor = CATEGORY_COLORS[primaryCat] || '#607d8b';
 
     const descriptionWords = event.description ? event.description.split(' ') : [];
     const shortDesc = descriptionWords.slice(0, 40).join(' ');
@@ -138,7 +168,7 @@ const EventDetail = () => {
     return (
         <div className="event-detail-page">
             {/* Hero Banner */}
-            <div className="event-detail-banner" style={{ background: gradient }}>
+            <div className="event-detail-banner" style={bannerStyle}>
                 <div className="event-detail-banner-actions">
                     <button className="event-detail-back-btn" onClick={() => navigate(-1)}>
                         <ArrowLeft size={20} />
@@ -181,8 +211,12 @@ const EventDetail = () => {
             <div className="event-detail-content">
                 {/* Club Row */}
                 <div className="event-detail-club-row">
-                    <div className="event-detail-club-avatar">
-                        {(event.club_name || 'E').charAt(0).toUpperCase()}
+                    <div className="event-detail-club-avatar" style={{ overflow: 'hidden' }}>
+                        {event.club_logo_url || event.logo_url ? (
+                            <img src={event.club_logo_url || event.logo_url} alt={event.club_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            (event.club_name || 'E').charAt(0).toUpperCase()
+                        )}
                     </div>
                     <div className="event-detail-club-info">
                         <span className="event-detail-club-name">{event.club_name || 'Campus Event'}</span>

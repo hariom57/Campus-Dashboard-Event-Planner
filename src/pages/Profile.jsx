@@ -73,24 +73,16 @@ const ProfilePage = () => {
         navigate('/');
     };
 
-    const toggleSelection = (targetKey, oppositeKey, id) => {
+    const toggleClubVisibility = (id) => {
         setSaveMessage('');
         setPreferences((prev) => {
-            const target = new Set(prev[targetKey]);
-            const opposite = new Set(prev[oppositeKey]);
-
-            if (target.has(id)) {
-                target.delete(id);
+            const blocked = new Set(prev.not_preferred_clubs);
+            if (blocked.has(id)) {
+                blocked.delete(id); 
             } else {
-                target.add(id);
-                opposite.delete(id);
+                blocked.add(id); 
             }
-
-            return {
-                ...prev,
-                [targetKey]: Array.from(target),
-                [oppositeKey]: Array.from(opposite),
-            };
+            return { ...prev, not_preferred_clubs: Array.from(blocked) };
         });
     };
 
@@ -116,34 +108,6 @@ const ProfilePage = () => {
         } finally {
             setSaving(false);
         }
-    };
-
-    const renderDualChoiceChip = (item, preferredSet, blockedSet, onPreferredToggle, onBlockedToggle) => {
-        const itemId = Number(item.id);
-        const preferred = preferredSet.has(itemId);
-        const blocked = blockedSet.has(itemId);
-
-        return (
-            <div key={item.id} className="pref-choice-card">
-                <span className="pref-choice-name">{item.name}</span>
-                <div className="pref-choice-actions">
-                    <button
-                        type="button"
-                        className={`pref-chip positive ${preferred ? 'active' : ''}`}
-                        onClick={onPreferredToggle}
-                    >
-                        Preferred
-                    </button>
-                    <button
-                        type="button"
-                        className={`pref-chip negative ${blocked ? 'active' : ''}`}
-                        onClick={onBlockedToggle}
-                    >
-                        Not Preferred
-                    </button>
-                </div>
-            </div>
-        );
     };
 
     return (
@@ -203,29 +167,30 @@ const ProfilePage = () => {
 
                         <section className="prefs-block">
                             <h3>Clubs</h3>
-                            <p>Mark each club as preferred or not preferred to personalize your feed.</p>
-                            <div className="pref-choice-grid">
-                                {clubs.map((club) => renderDualChoiceChip(
-                                    club,
-                                    preferredClubSet,
-                                    blockedClubSet,
-                                    () => toggleSelection('preferred_clubs', 'not_preferred_clubs', Number(club.id)),
-                                    () => toggleSelection('not_preferred_clubs', 'preferred_clubs', Number(club.id)),
-                                ))}
-                            </div>
-                        </section>
-
-                        <section className="prefs-block">
-                            <h3>Categories</h3>
-                            <p>Choose categories you want more of and categories you want less of.</p>
-                            <div className="pref-choice-grid">
-                                {categories.map((category) => renderDualChoiceChip(
-                                    category,
-                                    preferredCategorySet,
-                                    blockedCategorySet,
-                                    () => toggleSelection('preferred_categories', 'not_preferred_categories', Number(category.id)),
-                                    () => toggleSelection('not_preferred_categories', 'preferred_categories', Number(category.id)),
-                                ))}
+                            <p>All clubs are enabled by default. Click a club to hide its events from your feed.</p>
+                            <div className="pref-choice-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                                {clubs.map((club) => {
+                                    const isHidden = preferences.not_preferred_clubs.includes(Number(club.id));
+                                    return (
+                                        <button
+                                            key={club.id}
+                                            type="button"
+                                            onClick={() => toggleClubVisibility(Number(club.id))}
+                                            style={{
+                                                padding: '8px 16px',
+                                                borderRadius: '20px',
+                                                border: '1px solid var(--grey-300)',
+                                                background: isHidden ? 'var(--grey-100)' : 'var(--brand-purple-pale)',
+                                                color: isHidden ? 'var(--grey-500)' : 'var(--brand-purple)',
+                                                textDecoration: isHidden ? 'line-through' : 'none',
+                                                cursor: 'pointer',
+                                                fontWeight: '500'
+                                            }}
+                                        >
+                                            {club.name}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </section>
                     </div>

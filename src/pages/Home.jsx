@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Search, Bell } from 'lucide-react';
+import { Search, Bell, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EventCard from '../components/Event/EventCard';
 import eventService from '../services/events';
@@ -8,11 +8,6 @@ import eventReminderService from '../services/eventReminders';
 import { useAuth } from '../context/AuthContext';
 import './Home.css';
 
-const PREF_MODES = {
-    ALL: 'all',
-    PREFERRED: 'preferred',
-    NOT_PREFERRED: 'not-preferred',
-};
 
 const extractCategoryNames = (event) => {
     if (Array.isArray(event?.categories)) {
@@ -39,7 +34,6 @@ const Home = () => {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState([]);
-    const [prefMode, setPrefMode] = useState(PREF_MODES.ALL);
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const [reminderEventIds, setReminderEventIds] = useState(() => new Set(eventReminderService.getReminderIds()));
@@ -198,36 +192,23 @@ const Home = () => {
     };
 
     const filteredEvents = events.filter((ev) => {
-        const eventCategoryNames = extractCategoryNames(ev);
-        const eventCategoryIds = Array.isArray(ev.category_ids)
-            ? ev.category_ids.map((id) => Number(id)).filter((id) => Number.isInteger(id))
-            : [];
-        const eventClubId = Number(ev.club_id);
+    const eventCategoryNames = extractCategoryNames(ev);
+    
+    const eventClubId = Number(ev.club_id);
+    const isHiddenClub = notPreferredClubIds.has(eventClubId);
 
-        const matchesCategorySelection =
-            selectedCategories.length === 0
-            || selectedCategories.some((selected) => eventCategoryNames.includes(selected));
+    const matchesCategorySelection =
+        selectedCategories.length === 0
+        || selectedCategories.some((selected) => eventCategoryNames.includes(selected));
 
-        const isPreferredMatch =
-            preferredClubIds.has(eventClubId)
-            || eventCategoryIds.some((id) => preferredCategoryIds.has(id));
+    const matchesSearch =
+        !searchQuery
+        || ev.name.toLowerCase().includes(searchQuery.toLowerCase())
+        || (ev.club_name && ev.club_name.toLowerCase().includes(searchQuery.toLowerCase()))
+        || (ev.location_name && ev.location_name.toLowerCase().includes(searchQuery.toLowerCase())); 
 
-        const isNotPreferredMatch =
-            notPreferredClubIds.has(eventClubId)
-            || eventCategoryIds.some((id) => notPreferredCategoryIds.has(id));
-
-        const matchesPreferenceMode =
-            prefMode === PREF_MODES.ALL
-            || (prefMode === PREF_MODES.PREFERRED && isPreferredMatch)
-            || (prefMode === PREF_MODES.NOT_PREFERRED && isNotPreferredMatch);
-
-        const matchesSearch =
-            !searchQuery
-            || ev.name.toLowerCase().includes(searchQuery.toLowerCase())
-            || (ev.club_name && ev.club_name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-        return matchesCategorySelection && matchesPreferenceMode && matchesSearch;
-    });
+    return matchesCategorySelection && !isHiddenClub && matchesSearch; 
+});
 
     useEffect(() => {
         filteredEvents.forEach((event) => {
@@ -282,28 +263,6 @@ const Home = () => {
                 </div>
             )}
 
-            {/* Preference Modes */}
-            <div className="home-mode-wrap">
-                <button
-                    className={`home-mode-btn ${prefMode === PREF_MODES.ALL ? 'active' : ''}`}
-                    onClick={() => setPrefMode(PREF_MODES.ALL)}
-                >
-                    All Events
-                </button>
-                <button
-                    className={`home-mode-btn ${prefMode === PREF_MODES.PREFERRED ? 'active' : ''}`}
-                    onClick={() => setPrefMode(PREF_MODES.PREFERRED)}
-                >
-                    Preferred Only
-                </button>
-                <button
-                    className={`home-mode-btn ${prefMode === PREF_MODES.NOT_PREFERRED ? 'active' : ''}`}
-                    onClick={() => setPrefMode(PREF_MODES.NOT_PREFERRED)}
-                >
-                    Not Preferred
-                </button>
-            </div>
-
             {/* Category Filter Chips (Multi-select) */}
             <div className="home-chips-wrap">
                 {availableCategories.map((category) => (
@@ -335,8 +294,7 @@ const Home = () => {
                             className="btn-link"
                             onClick={() => {
                                 setSelectedCategories([]);
-                                setPrefMode(PREF_MODES.ALL);
-                                setSearchQuery('');
+                                setSearchQuery(''); 
                             }}
                         >
                             Clear filters
@@ -361,8 +319,10 @@ const Home = () => {
                 )}
 
                 {!loading && initialLoaded && !hasMore && filteredEvents.length > 0 && (
-                    <div className="home-end-message">
-                        <p>You're all caught up.</p>
+                    <div className="home-end-message" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                        <CheckCircle size={48} color="#2e7d32" style={{ marginBottom: '12px' }} />
+                        <h3 style={{ margin: '0 0 4px 0', color: 'var(--text-primary)' }}>You're all caught up!</h3>
+                        <p style={{ margin: 0, fontSize: '0.95rem' }}>You've seen all the upcoming events.</p>
                     </div>
                 )}
 

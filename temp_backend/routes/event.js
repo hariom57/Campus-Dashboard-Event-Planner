@@ -76,6 +76,23 @@ const normalizeEventTimestamp = (value) => {
     return parsed.toISOString();
 };
 
+const standardFlatAttributes = [
+    'id',
+    'name',
+    'club_id',
+    'tentative_start_time',
+    'duration_minutes',
+    'actual_start_time',
+    'description',
+    'image_url',
+    [sequelize.col('Club.name'), 'club_name'],
+    [sequelize.col('Club.logo_url'), 'club_logo_url'],
+    [sequelize.col('Location.id'), 'location_id'],
+    [sequelize.col('Location.name'), 'location_name'],
+    [sequelize.col('Location.description'), 'location_description'],
+    [sequelize.col('Location.images'), 'location_images']
+];
+
 // Protected route to get all current events
 router.get('/all', userLoggedIn, async (req, res) => {
     try {
@@ -89,24 +106,16 @@ router.get('/all', userLoggedIn, async (req, res) => {
         const [count, events] = await Promise.all([
             Event.count({ where: whereClause }),
             Event.findAll({
-                attributes: [
-                    'id',
-                    'name',
-                    'club_id',
-                    'tentative_start_time',
-                    'duration_minutes',
-                    'actual_start_time',
-                    'description'
-                ],
+                attributes: standardFlatAttributes,
                 include: [
                     {
                         model: Club,
-                        attributes: [['name', 'club_name']],
+                        attributes: [], // Empty attributes required when using sequelize.col() above
                         required: false
                     },
                     {
                         model: Location,
-                        attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                        attributes: [], // Empty attributes required when using sequelize.col() above
                         required: false
                     }
                 ],
@@ -211,23 +220,16 @@ router.get('/venue/:venue_id', userLoggedIn, async (req, res) => {
         const { page, limit, offset } = getPaginationParams(req);
 
         const { rows: events, count } = await Event.findAndCountAll({
-            attributes: [
-                'id',
-                'name',
-                'tentative_start_time',
-                'duration_minutes',
-                'actual_start_time',
-                'description'
-            ],
+            attributes: standardFlatAttributes,
             include: [
                 {
                     model: Club,
-                    attributes: [['name', 'club_name']],
+                    attributes: [],
                     required: false
                 },
                 {
                     model: Location,
-                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    attributes: [],
                     required: false
                 }
             ],
@@ -267,23 +269,16 @@ router.get('/date/:date', userLoggedIn, async (req, res) => {
         const { page, limit, offset } = getPaginationParams(req);
 
         const { rows: events, count } = await Event.findAndCountAll({
-            attributes: [
-                'id',
-                'name',
-                'tentative_start_time',
-                'duration_minutes',
-                'actual_start_time',
-                'description'
-            ],
+            attributes: standardFlatAttributes,
             include: [
                 {
                     model: Club,
-                    attributes: [['name', 'club_name']],
+                    attributes: [],
                     required: false
                 },
                 {
                     model: Location,
-                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    attributes: [],
                     required: false
                 }
             ],
@@ -325,17 +320,18 @@ router.get('/:eventId', userLoggedIn, async (req, res) => {
                 'tentative_start_time',
                 'duration_minutes',
                 'actual_start_time',
-                'description'
+                'description',
+                'image_url'
             ],
             include: [
                 {
                     model: Club,
-                    attributes: [['name', 'club_name']],
+                    attributes: ['name', 'logo_url'], // Standard include because raw: true is false
                     required: false
                 },
                 {
                     model: Location,
-                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    attributes: ['id', 'name', 'description', 'images'], // Standard include
                     required: false
                 },
                 {
@@ -357,13 +353,26 @@ router.get('/:eventId', userLoggedIn, async (req, res) => {
 
         const plainEvent = event.toJSON();
         const categories = Array.isArray(plainEvent.EventCategories) ? plainEvent.EventCategories : [];
+        
+        // Flatten payload to match raw payload fields (club_name, club_logo_url) 
+        const flatEvent = {
+            ...plainEvent,
+            club_name: plainEvent.Club?.name,
+            club_logo_url: plainEvent.Club?.logo_url,
+            location_id: plainEvent.Location?.id,
+            location_name: plainEvent.Location?.name,
+            location_description: plainEvent.Location?.description,
+            location_images: plainEvent.Location?.images,
+            category_ids: categories.map((cat) => cat.id),
+            categories,
+        };
+        
+        delete flatEvent.Club;
+        delete flatEvent.Location;
+        delete flatEvent.EventCategories;
 
         res.json({
-            event: {
-                ...plainEvent,
-                category_ids: categories.map((cat) => cat.id),
-                categories,
-            }
+            event: flatEvent
         });
     } catch (error) {
         console.error('Error fetching events:', error);
@@ -380,19 +389,7 @@ router.get('/clubs/preferred', userData, async (req, res) => {
         const { page, limit, offset } = getPaginationParams(req);
 
         const { rows: events, count } = await Event.findAndCountAll({
-            attributes: [
-                'id',
-                'name',
-                'tentative_start_time',
-                'duration_minutes',
-                'actual_start_time',
-                'description',
-                [sequelize.col('Club.name'), 'club_name'],
-                [sequelize.col('Location.id'), 'location_id'],
-                [sequelize.col('Location.name'), 'location_name'],
-                [sequelize.col('Location.description'), 'location_description'],
-                [sequelize.col('Location.images'), 'location_images']
-            ],
+            attributes: standardFlatAttributes,
             include: [
                 {
                     model: Club,
@@ -444,23 +441,16 @@ router.get('/clubs/not-preferred', userData, async (req, res) => {
         const { page, limit, offset } = getPaginationParams(req);
 
         const { rows: events, count } = await Event.findAndCountAll({
-            attributes: [
-                'id',
-                'name',
-                'tentative_start_time',
-                'duration_minutes',
-                'actual_start_time',
-                'description'
-            ],
+            attributes: standardFlatAttributes,
             include: [
                 {
                     model: Club,
-                    attributes: [['name', 'club_name']],
+                    attributes: [],
                     required: true
                 },
                 {
                     model: Location,
-                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    attributes: [],
                     required: false
                 }
             ],
@@ -500,23 +490,16 @@ router.get('/categories/preferred', userData, async (req, res) => {
         const { page, limit, offset } = getPaginationParams(req);
 
         const { rows: events, count } = await Event.findAndCountAll({
-            attributes: [
-                'id',
-                'name',
-                'tentative_start_time',
-                'duration_minutes',
-                'actual_start_time',
-                'description'
-            ],
+            attributes: standardFlatAttributes,
             include: [
                 {
                     model: Club,
-                    attributes: [['name', 'club_name']],
+                    attributes: [],
                     required: false
                 },
                 {
                     model: Location,
-                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    attributes: [],
                     required: false
                 }
             ],
@@ -556,23 +539,16 @@ router.get('/categories/not-preferred', userData, async (req, res) => {
         const { page, limit, offset } = getPaginationParams(req);
 
         const { rows: events, count } = await Event.findAndCountAll({
-            attributes: [
-                'id',
-                'name',
-                'tentative_start_time',
-                'duration_minutes',
-                'actual_start_time',
-                'description'
-            ],
+            attributes: standardFlatAttributes,
             include: [
                 {
                     model: Club,
-                    attributes: [['name', 'club_name']],
+                    attributes: [],
                     required: false
                 },
                 {
                     model: Location,
-                    attributes: [['id', 'location_id'], ['name', 'location_name'], ['description', 'location_description'], ['images', 'location_images']],
+                    attributes: [],
                     required: false
                 }
             ],
@@ -617,7 +593,8 @@ router.patch('/:eventId', checkEventPermission, async (req, res) => {
         duration_minutes,
         actual_start_time,
         description,
-        category_ids
+        category_ids,
+        image_url
     } = req.body;
 
     try {
@@ -652,6 +629,7 @@ router.patch('/:eventId', checkEventPermission, async (req, res) => {
             }
         }
         if (description !== undefined) updateData.description = description;
+        if (image_url !== undefined) updateData.image_url = image_url;
 
         if (Object.keys(updateData).length === 0) {
             return res.status(400).json({
@@ -761,7 +739,8 @@ router.post('/add', checkEventPermission, async (req, res) => {
         duration_minutes,
         actual_start_time,
         description,
-        category_ids
+        category_ids,
+        image_url
     } = req.body;
 
     try {
@@ -802,7 +781,8 @@ router.post('/add', checkEventPermission, async (req, res) => {
                 tentative_start_time: normalizedTentativeStartTime,
                 duration_minutes,
                 actual_start_time: normalizedActualStartTime,
-                description: description || null
+                description: description || null,
+                image_url: image_url || ''
             }, { transaction: t });
 
             if (normalizedCategoryIds.length > 0) {

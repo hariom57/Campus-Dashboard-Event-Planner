@@ -47,6 +47,10 @@ const Event = sequelize.define('Event', {
         type: DataTypes.TEXT,
         allowNull: true,
     },
+    image_url: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    }
 }, {
     tableName: 'event',
     timestamps: false,

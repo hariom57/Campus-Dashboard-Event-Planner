@@ -3,6 +3,7 @@ import { Building2, Edit, Loader, Mail, Plus, Search, ShieldAlert, Save, Trash2,
 import { useAuth } from '../context/AuthContext';
 import clubsService from '../services/clubs';
 import './Clubs.css';
+import { uploadImageToCDN } from '../services/upload';
 
 const emptyForm = {
     name: '',
@@ -52,6 +53,19 @@ const ClubsPage = () => {
                 .some((value) => value.toLowerCase().includes(query));
         });
     }, [clubs, searchQuery]);
+
+    const handleLogoUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            const logoUrl = await uploadImageToCDN(file);
+            setFormData(prev => ({ ...prev, logo_url: logoUrl }));
+            alert("Logo uploaded successfully!");
+        } catch (err) {
+            alert("Failed to upload logo. Please try again.");
+        }
+    };
 
     const openCreateModal = () => {
         if (!canManageClubs) return;
@@ -264,8 +278,24 @@ const ClubsPage = () => {
                                     </div>
 
                                     <div className="form-group full-width">
-                                        <label>Logo URL</label>
-                                        <input name="logo_url" value={formData.logo_url} onChange={handleChange} />
+                                        <label>Club Logo</label>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                onChange={handleLogoUpload} 
+                                                style={{ flex: 1, padding: '8px', border: '1px dashed var(--grey-300)' }} 
+                                            />
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--grey-500)' }}>OR</span>
+                                            <input 
+                                                name="logo_url" 
+                                                value={formData.logo_url || ''} 
+                                                onChange={handleChange} 
+                                                placeholder="Paste Logo URL"
+                                                style={{ flex: 1 }} 
+                                            />
+                                        </div>
+                                        {formData.logo_url && <img src={formData.logo_url} alt="Logo Preview" style={{ marginTop: '10px', width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />}
                                     </div>
                                 </div>
 

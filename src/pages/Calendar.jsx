@@ -61,7 +61,7 @@ const CalendarPage = () => {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [viewDate, setViewDate] = useState(new Date()); // For month navigation
     const [activeCategory, setActiveCategory] = useState('All');
-    const [viewMode, setViewMode] = useState('strip'); // 'strip' or 'grid'
+    const [viewMode, setViewMode] = useState('grid'); // 'strip' or 'grid'
 
     const weekDays = useMemo(() => buildWeekStrip(), []);
 
@@ -75,7 +75,7 @@ const CalendarPage = () => {
 
                 // Normalize academic events to match the displayed schema
                 const normalizedAcademic = academicEvents.map(ae => ({
-                    id: ae.id,
+                    id: `academic-${ae.id}`,
                     name: ae.title,
                     tentative_start_time: ae.startDate + 'T00:00:00',
                     tentative_end_time: ae.endDate + 'T23:59:59',
