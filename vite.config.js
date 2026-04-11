@@ -42,6 +42,7 @@ export default defineConfig(({ mode }) => {
         workbox: {
           navigateFallback: '/index.html',
           globPatterns: ['**/*.{js,css,html,svg,png,ico,json}'],
+          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB limit
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/campus-event-planner-backend\.onrender\.com\//,
