@@ -121,19 +121,19 @@ const Admin = () => {
 
             try {
                 const allClubs = await clubsService.getAllClubs();
-                if (hasGlobalEventCrud) {
-                    setManagedClubs(allClubs);
-                    return;
+                let filtered = [];
+                if (hasGlobalEventCrud || hasGlobalClubAdminAccess) {
+                    filtered = allClubs;
+                } else {
+                    const allowedClubIds = new Set((managedClubIds || []).map((id) => Number(id)));
+                    filtered = allClubs.filter((club) => allowedClubIds.has(Number(club.id)));
                 }
-
-                if (hasGlobalClubAdminAccess) {
-                    setManagedClubs(allClubs);
-                    return;
-                }
-
-                const allowedClubIds = new Set((managedClubIds || []).map((id) => Number(id)));
-                const filtered = allClubs.filter((club) => allowedClubIds.has(Number(club.id)));
                 setManagedClubs(filtered);
+
+                // Auto-select if only one club available
+                if (filtered.length === 1 && !newEvent.club_id) {
+                    setNewEvent(prev => ({ ...prev, club_id: String(filtered[0].id) }));
+                }
             } catch (error) {
                 console.error('Failed to fetch managed clubs', error);
                 setManagedClubs([]);
@@ -142,6 +142,12 @@ const Admin = () => {
 
         fetchManagedClubs();
     }, [authLoading, user, managedClubIds, hasGlobalEventCrud, canManageClubAdmins]);
+
+    useEffect(() => {
+        if (locations.length === 1 && !newEvent.location_id) {
+            setNewEvent(prev => ({ ...prev, location_id: String(locations[0].id) }));
+        }
+    }, [locations]);
 
     useEffect(() => {
         if (!isAdmin || !canManageAdmins) return;
@@ -273,7 +279,8 @@ const Admin = () => {
             fetchEvents();
         } catch (error) {
             console.error("Failed to save event", error);
-            alert('Failed to save event. Please check your permissions or try again.');
+            const msg = error.response?.data?.message || 'Please check your permissions or try again.';
+            alert(`Failed to save event: ${msg}`);
         } finally {
             setLoading(false);
         }
@@ -1143,6 +1150,18 @@ const Admin = () => {
                                         />
                                     </div>
                                     {newEvent.image_url && <img src={newEvent.image_url} alt="Preview" style={{ marginTop: '10px', maxHeight: '100px', borderRadius: '8px', objectFit: 'cover' }} />}
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Event Name</label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        value={newEvent.name}
+                                        onChange={handleInputChange}
+                                        placeholder="e.g. Tinkerquest 2.0"
+                                        required
+                                    />
                                 </div>
 
                                 <div className="form-group">

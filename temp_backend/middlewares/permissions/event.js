@@ -40,28 +40,19 @@ const checkEventPermission = async (req, res, next) => {
             }
 
             // If no event permission, check if user is club admin for this event's club
-            const { eventId } = req.params || "";
+            const { eventId } = req.params;
 
-            // const event = await sql`
-            //     SELECT club_id
-            //     FROM event
-            //     WHERE id = ${eventId}
-            // `;
+            if (eventId) {
+                // Get the club_id for this event
+                const event = await Event.findOne({
+                    where: { id: eventId },
+                    attributes: ['club_id']
+                });
 
-            // if (event && event.length > 0) {
-            //     // Set club_id in req.body for checkClubAdminForClub middleware
-            //     req.body.club_id = event[0].club_id;
-            // }
-
-            // Get the club_id for this event
-            const event = await Event.findOne({
-                where: { id: eventId },
-                attributes: ['club_id']
-            });
-
-            if (event) {
-                // Set club_id in req.body for checkClubAdminForClub middleware
-                req.body.club_id = event.club_id;
+                if (event) {
+                    // Set club_id in req.body for checkClubAdminForClub middleware
+                    req.body.club_id = event.club_id;
+                }
             }
 
             // Check if user is admin of this club

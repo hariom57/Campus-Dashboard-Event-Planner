@@ -54,7 +54,7 @@ const normalizeEventTimestamp = (value) => {
     const raw = String(value).trim();
     if (!raw) return null;
 
-    const naiveMatch = raw.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::(\d{2}))?(?:\.\d+)?$/);
+    const naiveMatch = String(raw).match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::(\d{2}))?(?:\.\d+)?$/);
     if (naiveMatch) {
         const [, datePart, timePart, secondPart] = naiveMatch;
         // Interpret naive values as IST wall-clock for backward compatibility.
@@ -64,7 +64,7 @@ const normalizeEventTimestamp = (value) => {
         return parsedNaive.toISOString();
     }
 
-    const zonedMatch = raw.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/i);
+    const zonedMatch = String(raw).match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/i);
     if (zonedMatch) {
         const parsed = new Date(raw);
         if (Number.isNaN(parsed.getTime())) return null;
@@ -745,12 +745,10 @@ router.post('/add', checkEventPermission, async (req, res) => {
 
     try {
         // Validate required fields
-        if (!name || !club_id || !tentative_start_time || !duration_minutes) {
-            return res.status(400).json({
-                error: 'Bad request',
-                message: 'Missing required fields: name, club_id, tentative_start_time, duration_minutes'
-            });
-        }
+        if (!name) return res.status(400).json({ error: 'Bad request', message: 'Event name is required' });
+        if (!club_id || isNaN(parseInt(club_id))) return res.status(400).json({ error: 'Bad request', message: 'A valid Club ID is required' });
+        if (!tentative_start_time) return res.status(400).json({ error: 'Bad request', message: 'Tentative start time is required' });
+        if (!duration_minutes || isNaN(parseInt(duration_minutes))) return res.status(400).json({ error: 'Bad request', message: 'Duration (in minutes) is required' });
 
         const normalizedCategoryIds = normalizeCategoryIds(category_ids);
         const normalizedTentativeStartTime = normalizeEventTimestamp(tentative_start_time);
@@ -761,7 +759,7 @@ router.post('/add', checkEventPermission, async (req, res) => {
         if (!normalizedTentativeStartTime) {
             return res.status(400).json({
                 error: 'Bad request',
-                message: 'Invalid tentative_start_time format'
+                message: 'Invalid tentative_start_time format. Expected YYYY-MM-DDTHH:MM'
             });
         }
 
