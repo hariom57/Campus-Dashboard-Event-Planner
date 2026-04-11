@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: 'auto',
-        includeAssets: ['pwa-icon.svg'],
+        includeAssets: ['logo_minimal.jpeg'],
         manifest: {
           name: 'IITR Campus Event Dashboard',
           short_name: 'Event Dashboard',
@@ -26,15 +26,15 @@ export default defineConfig(({ mode }) => {
           start_url: '/',
           icons: [
             {
-              src: '/pwa-icon-192.svg',
+              src: '/logo_minimal.jpeg',
               sizes: '192x192',
-              type: 'image/svg+xml',
+              type: 'image/jpeg',
               purpose: 'any maskable'
             },
             {
-              src: '/pwa-icon-512.svg',
+              src: '/logo_minimal.jpeg',
               sizes: '512x512',
-              type: 'image/svg+xml',
+              type: 'image/jpeg',
               purpose: 'any maskable'
             }
           ]
