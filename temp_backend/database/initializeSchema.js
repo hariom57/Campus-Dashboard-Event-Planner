@@ -93,6 +93,11 @@ const initializeSchema = async () => {
         // alter: false = safe for existing DBs, never modifies existing columns.
         await sequelize.sync({ alter: false });
 
+        // Ensure is_all_day column exists in event table (non-blocking)
+        sequelize.query(`
+            ALTER TABLE event ADD COLUMN IF NOT EXISTS is_all_day BOOLEAN DEFAULT FALSE;
+        `).catch(err => console.error('Column existence check failed:', err.message));
+
         // Normalize legacy timestamp columns to timestamptz so event times are timezone-safe.
         await sequelize.query(`
             DO $$

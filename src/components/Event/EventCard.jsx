@@ -35,10 +35,10 @@ const formatTime = (dateStr) => {
 
 const formatDate = (dateStr) => {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' });
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 };
 
-const formatRelativeDate = (dateStr) => {
+const formatRelativeDate = (dateStr, isShort = false) => {
     const eventDate = new Date(dateStr);
     const today = new Date();
     const tomorrow = new Date();
@@ -51,8 +51,39 @@ const formatRelativeDate = (dateStr) => {
     if (eventDay === todayDay) return 'Today';
     if (eventDay === tomorrowDay) return 'Tomorrow';
 
-    return formatDate(dateStr);
+    if (isShort) return eventDate.getDate();
+    
+    return eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' });
 };
+
+const formatEventDateRange = (startTime, durationMinutes) => {
+    const startDate = new Date(startTime);
+    if (!durationMinutes || durationMinutes <= 1440) {
+        const endDateObj = new Date(startDate.getTime() + (durationMinutes || 0) * 60000);
+        if (startDate.getDate() === endDateObj.getDate()) {
+            return formatRelativeDate(startTime);
+        }
+    }
+    
+    const endDate = new Date(startDate.getTime() + (durationMinutes || 0) * 60000);
+    
+    const startDay = startDate.getDate();
+    const endDay = endDate.getDate();
+    const startMonth = startDate.toLocaleDateString('en-IN', { month: 'short' });
+    const endMonth = endDate.toLocaleDateString('en-IN', { month: 'short' });
+
+    if (startDate.toISOString().split('T')[0] === todayDay() ) {
+         // handle relatively if needed, but for range 18-19 Apr is clearer
+    }
+
+    if (startMonth === endMonth) {
+        return `${startDay}-${endDay} ${startMonth}`;
+    }
+    
+    return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
+};
+
+const todayDay = () => new Date().toISOString().split('T')[0];
 
 const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
     const navigate = useNavigate();
@@ -163,11 +194,11 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
                 <div className="event-card-meta">
                     <span className="event-meta-item">
                         <CalendarDays size={13} />
-                        {formatRelativeDate(event.tentative_start_time)}
+                        {formatEventDateRange(event.tentative_start_time, event.duration_minutes)}
                     </span>
                     <span className="event-meta-item">
                         <Clock size={13} />
-                        {event.isAllDay ? 'ALL DAY' : formatTime(event.tentative_start_time)}
+                        {event.is_all_day || event.isAllDay ? 'ALL DAY' : formatTime(event.tentative_start_time)}
                     </span>
                     <span className="event-meta-item">
                         <MapPin size={13} />

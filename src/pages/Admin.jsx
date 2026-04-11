@@ -82,7 +82,10 @@ const Admin = () => {
         club_id: '',
         location_id: '',
         date: '',
+        endDate: '',
         time: '',
+        isAllDay: false,
+        isMultiDay: false,
         duration_minutes: 60,
         description: '',
         category_ids: [], 
@@ -194,7 +197,8 @@ const Admin = () => {
 
     const fetchEvents = async () => {
         try {
-            const data = await eventService.getAllEvents();
+            // Fetch more events for the admin view to avoid pagination confusion
+            const data = await eventService.getAllEvents(1, 100);
             setEvents(data);
         } catch (error) {
             console.error("Failed to fetch events", error);
@@ -237,20 +241,40 @@ const Admin = () => {
     };
 
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setNewEvent(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setNewEvent(prev => ({ 
+            ...prev, 
+            [name]: type === 'checkbox' ? checked : value 
+        }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const timeToUse = newEvent.isAllDay ? '00:00' : newEvent.time;
+        const tentativeStartTime = buildDateTimeWithOffset(newEvent.date, timeToUse);
+        console.log('[DEBUG] Tentative Start Time:', tentativeStartTime);
+
+        if (!tentativeStartTime) {
+            alert('Please enter a valid date and time.');
+            return;
+        }
+
         setLoading(true);
-
         try {
-            const tentativeStartTime = buildDateTimeWithOffset(newEvent.date, newEvent.time);
+            let calculatedDuration = parseInt(newEvent.duration_minutes);
 
-            if (!tentativeStartTime) {
-                alert('Please enter a valid date and time.');
-                return;
+            if (newEvent.isMultiDay && newEvent.endDate) {
+                const start = new Date(`${newEvent.date}T${timeToUse}`);
+                const endTime = newEvent.isAllDay ? '23:59' : newEvent.time;
+                const end = new Date(`${newEvent.endDate}T${endTime}`);
+
+                if (end <= start) {
+                    alert('End date must be after start date.');
+                    return;
+                }
+                calculatedDuration = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+            } else if (newEvent.isAllDay) {
+                calculatedDuration = 1440;
             }
 
             const payload = {
@@ -258,24 +282,29 @@ const Admin = () => {
                 club_id: parseInt(newEvent.club_id),
                 location_id: parseInt(newEvent.location_id),
                 tentative_start_time: tentativeStartTime,
-                duration_minutes: parseInt(newEvent.duration_minutes),
+                duration_minutes: calculatedDuration,
                 description: newEvent.description,
                 category_ids: Array.isArray(newEvent.category_ids) ? newEvent.category_ids : [],
                 image_url: newEvent.image_url,
+                is_all_day: newEvent.isAllDay
             };
 
-            if (editingEventId) {
-                await eventService.updateEvent(editingEventId, payload);
+            const response = editingEventId 
+                ? await eventService.updateEvent(editingEventId, payload)
+                : await eventService.createEvent(payload);
+            
+            console.log('[DEBUG] Server Response:', response);
+            alert(`Event "${payload.name}" ${editingEventId ? 'updated' : 'created'} successfully!`);
 
-                alert('Event updated successfully!');
-            } else {
-                await eventService.createEvent(payload);
-                alert('Event created successfully!');
-            }
-
+            setLoading(false);
             setShowCreateModal(false);
             setEditingEventId(null);
-            setNewEvent({ name: '', club_id: '', location_id: '', date: '', time: '', duration_minutes: 60, description: '', category_ids: [], image_url: '' });
+            setNewEvent({
+                name: '', club_id: '', location_id: '', date: '', endDate: '', time: '',
+                isAllDay: false, isMultiDay: false, duration_minutes: 60,
+                description: '', category_ids: [], image_url: ''
+            });
+            
             fetchEvents();
         } catch (error) {
             console.error("Failed to save event", error);
@@ -287,6 +316,8 @@ const Admin = () => {
     };
 
     const handleEdit = async (event) => {
+        if (!event?.id) return;
+        setLoading(true);
         const dateObj = new Date(event.tentative_start_time);
 
         let categoryIds = [];
@@ -333,12 +364,24 @@ const Admin = () => {
             ?? detailed?.Location?.id
         );
 
+        const isAllDay = event.is_all_day || detailed?.is_all_day || (event.duration_minutes % 1440 === 0 && dateObj.getHours() === 0 && dateObj.getMinutes() === 0);
+        const isMultiDay = event.duration_minutes >= 1440;
+        
+        let endDate = '';
+        if (isMultiDay) {
+            const endDateObj = new Date(dateObj.getTime() + event.duration_minutes * 60000);
+            endDate = formatDateInputLocal(endDateObj);
+        }
+
         setNewEvent({
             name: event.name,
             club_id: resolvedClubId ? String(resolvedClubId) : '',
             location_id: resolvedLocationId ? String(resolvedLocationId) : '',
             date: formatDateInputLocal(dateObj),
+            endDate: endDate,
             time: formatTimeInputLocal(dateObj),
+            isAllDay: isAllDay,
+            isMultiDay: isMultiDay,
             duration_minutes: event.duration_minutes,
             description: event.description || '',
             category_ids: categoryIds,
@@ -346,6 +389,7 @@ const Admin = () => {
         });
         setEditingEventId(event.id);
         setShowCreateModal(true);
+        setLoading(false);
     };
 
     const handleDelete = async (id) => {
@@ -363,7 +407,11 @@ const Admin = () => {
     const openCreateModal = () => {
         if (!canManageEvents) return;
         setEditingEventId(null);
-        setNewEvent({ name: '', club_id: '', location_id: '', date: '', time: '', duration_minutes: 60, description: '', category_ids: [], image_url: '' });
+        setNewEvent({
+            name: '', club_id: '', location_id: '', date: '', endDate: '', time: '',
+            isAllDay: false, isMultiDay: false, duration_minutes: 60,
+            description: '', category_ids: [], image_url: ''
+        });
         setShowCreateModal(true);
     };
 
@@ -1192,9 +1240,32 @@ const Admin = () => {
                                     </small>
                                 </div>
 
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Date</label>
+                                <div className="form-row date-time-options">
+                                    <div className="checkbox-options">
+                                        <label className="checkbox-item">
+                                            <input
+                                                type="checkbox"
+                                                name="isAllDay"
+                                                checked={newEvent.isAllDay}
+                                                onChange={handleInputChange}
+                                            />
+                                            All Day Event
+                                        </label>
+                                        <label className="checkbox-item">
+                                            <input
+                                                type="checkbox"
+                                                name="isMultiDay"
+                                                checked={newEvent.isMultiDay}
+                                                onChange={handleInputChange}
+                                            />
+                                            Spans multiple dates
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="form-row date-inputs">
+                                    <div className="form-group" style={{ flex: 1 }}>
+                                        <label>{newEvent.isMultiDay ? 'Start Date' : 'Date'}</label>
                                         <input
                                             type="date"
                                             name="date"
@@ -1203,30 +1274,46 @@ const Admin = () => {
                                             required
                                         />
                                     </div>
+                                    {newEvent.isMultiDay && (
+                                        <div className="form-group" style={{ flex: 1 }}>
+                                            <label>End Date</label>
+                                            <input
+                                                type="date"
+                                                name="endDate"
+                                                value={newEvent.endDate}
+                                                onChange={handleInputChange}
+                                                required
+                                            />
+                                        </div>
+                                    )}
+                                    {!newEvent.isAllDay && (
+                                        <div className="form-group" style={{ flex: 1 }}>
+                                            <label>Time</label>
+                                            <input
+                                                type="time"
+                                                name="time"
+                                                value={newEvent.time}
+                                                onChange={handleInputChange}
+                                                required
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {!newEvent.isAllDay && !newEvent.isMultiDay && (
                                     <div className="form-group">
-                                        <label>Time</label>
+                                        <label>Duration (minutes)</label>
                                         <input
-                                            type="time"
-                                            name="time"
-                                            value={newEvent.time}
+                                            type="number"
+                                            name="duration_minutes"
+                                            value={newEvent.duration_minutes}
                                             onChange={handleInputChange}
+                                            min="15"
+                                            step="15"
                                             required
                                         />
                                     </div>
-                                </div>
-
-                                <div className="form-group">
-                                    <label>Duration (minutes)</label>
-                                    <input
-                                        type="number"
-                                        name="duration_minutes"
-                                        value={newEvent.duration_minutes}
-                                        onChange={handleInputChange}
-                                        min="15"
-                                        step="15"
-                                        required
-                                    />
-                                </div>
+                                )}
 
                                 <div className="form-group">
                                     <label>Venue</label>

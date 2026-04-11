@@ -150,10 +150,17 @@ const Home = () => {
 
         return combined
             .filter((ev) => {
-                const eventDate = ev.tentative_end_time
-                    ? ev.tentative_end_time.split('T')[0]
-                    : ev.tentative_start_time.split('T')[0];
-                return eventDate >= todayStr;
+                let endTime;
+                if (ev.isAcademicCalendar && ev.tentative_end_time) {
+                    endTime = ev.tentative_end_time;
+                } else {
+                    const startDate = new Date(ev.tentative_start_time);
+                    const endDateObj = new Date(startDate.getTime() + (ev.duration_minutes || 0) * 60000);
+                    endTime = endDateObj.toISOString();
+                }
+
+                const eventEndDateStr = endTime.split('T')[0];
+                return eventEndDateStr >= todayStr;
             })
             .sort((a, b) => new Date(a.tentative_start_time) - new Date(b.tentative_start_time));
     }, [dynamicEvents, academicEvents]);

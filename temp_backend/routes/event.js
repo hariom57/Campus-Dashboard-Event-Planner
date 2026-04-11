@@ -90,18 +90,15 @@ const standardFlatAttributes = [
     [sequelize.col('Location.id'), 'location_id'],
     [sequelize.col('Location.name'), 'location_name'],
     [sequelize.col('Location.description'), 'location_description'],
-    [sequelize.col('Location.images'), 'location_images']
+    [sequelize.col('Location.images'), 'location_images'],
+    'is_all_day'
 ];
 
 // Protected route to get all current events
 router.get('/all', userLoggedIn, async (req, res) => {
     try {
         const { page, limit, offset } = getPaginationParams(req);
-        const whereClause = {
-            tentative_start_time: {
-                [Op.gte]: sequelize.literal('CURRENT_DATE')
-            }
-        };
+        const whereClause = {};
 
         const [count, events] = await Promise.all([
             Event.count({ where: whereClause }),
@@ -594,15 +591,16 @@ router.patch('/:eventId', checkEventPermission, async (req, res) => {
         actual_start_time,
         description,
         category_ids,
-        image_url
+        image_url,
+        is_all_day
     } = req.body;
 
     try {
         // Build update object with only provided fields
         const updateData = {};
         if (name !== undefined) updateData.name = name;
-        if (club_id !== undefined) updateData.club_id = club_id;
-        if (location_id !== undefined) updateData.location_id = location_id;
+        if (club_id !== undefined && !isNaN(parseInt(club_id))) updateData.club_id = parseInt(club_id);
+        if (location_id !== undefined) updateData.location_id = location_id ? parseInt(location_id) : null;
         if (tentative_start_time !== undefined) {
             const normalizedStart = normalizeEventTimestamp(tentative_start_time);
             if (!normalizedStart) {
@@ -630,6 +628,7 @@ router.patch('/:eventId', checkEventPermission, async (req, res) => {
         }
         if (description !== undefined) updateData.description = description;
         if (image_url !== undefined) updateData.image_url = image_url;
+        if (is_all_day !== undefined) updateData.is_all_day = is_all_day;
 
         if (Object.keys(updateData).length === 0) {
             return res.status(400).json({
@@ -695,7 +694,7 @@ router.patch('/:eventId', checkEventPermission, async (req, res) => {
 
         res.status(500).json({
             error: 'Internal server error',
-            message: 'Could not update event'
+            message: error.message
         });
     }
 });
@@ -740,7 +739,8 @@ router.post('/add', checkEventPermission, async (req, res) => {
         actual_start_time,
         description,
         category_ids,
-        image_url
+        image_url,
+        is_all_day
     } = req.body;
 
     try {
@@ -780,7 +780,8 @@ router.post('/add', checkEventPermission, async (req, res) => {
                 duration_minutes,
                 actual_start_time: normalizedActualStartTime,
                 description: description || null,
-                image_url: image_url || ''
+                image_url: image_url || '',
+                is_all_day: is_all_day || false
             }, { transaction: t });
 
             if (normalizedCategoryIds.length > 0) {
@@ -810,7 +811,7 @@ router.post('/add', checkEventPermission, async (req, res) => {
 
         res.status(500).json({
             error: 'Internal server error',
-            message: 'Could not create event'
+            message: error.message
         });
     }
 });

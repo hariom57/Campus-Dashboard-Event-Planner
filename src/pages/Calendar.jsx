@@ -27,6 +27,20 @@ const getLocalDateString = (date) => {
     return `${year}-${month}-${day}`;
 };
 
+const getEventBounds = (ev) => {
+    let st, en;
+    if (ev.isAcademicCalendar) {
+        st = ev.raw_start;
+        en = ev.raw_end;
+    } else {
+        const startDate = new Date(ev.tentative_start_time);
+        st = getLocalDateString(startDate);
+        const endDate = new Date(startDate.getTime() + (ev.duration_minutes || 0) * 60000);
+        en = getLocalDateString(endDate);
+    }
+    return { st, en };
+};
+
 const formatTime = (dateStr) => {
     const d = new Date(dateStr);
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -106,18 +120,7 @@ const CalendarPage = () => {
 
     const dayEvents = useMemo(() => {
         return events.filter(ev => {
-            // For academic events, we use the raw startDate/endDate strings for perfect matching
-            let st, en;
-            if (ev.isAcademicCalendar) {
-                // These are already YYYY-MM-DD
-                st = ev.raw_start;
-                en = ev.raw_end;
-            } else {
-                // For dynamic events, parse the UTC/Local timestamp to local YYYY-MM-DD
-                st = getLocalDateString(new Date(ev.tentative_start_time));
-                en = ev.tentative_end_time ? getLocalDateString(new Date(ev.tentative_end_time)) : st;
-            }
-
+            const { st, en } = getEventBounds(ev);
             const matchDate = selectedDateStr >= st && selectedDateStr <= en;
 
             const primaryCat = ev.categories ? ev.categories.split(',')[0].trim() : 'General';
@@ -134,8 +137,7 @@ const CalendarPage = () => {
         weekDays.forEach(d => {
             const dStr = getLocalDateString(d);
             const hasEvent = events.some(ev => {
-                const st = getLocalDateString(new Date(ev.tentative_start_time));
-                const en = ev.tentative_end_time ? getLocalDateString(new Date(ev.tentative_end_time)) : st;
+                const { st, en } = getEventBounds(ev);
                 return dStr >= st && dStr <= en;
             });
             if (hasEvent) map[dStr] = true;
@@ -182,16 +184,17 @@ const CalendarPage = () => {
     const monthEventMap = useMemo(() => {
         const map = {};
         events.forEach(ev => {
-            const start = new Date(ev.tentative_start_time);
-            const end = ev.tentative_end_time ? new Date(ev.tentative_end_time) : start;
+            const { st, en } = getEventBounds(ev);
+            const startArr = st.split('-').map(Number);
+            const endArr = en.split('-').map(Number);
 
-            let curr = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-            const stop = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+            let curr = new Date(startArr[0], startArr[1] - 1, startArr[2]);
+            const stop = new Date(endArr[0], endArr[1] - 1, endArr[2]);
 
             while (curr <= stop) {
                 const k = getLocalDateString(curr);
                 if (!map[k]) map[k] = new Set();
-                const primaryCat = ev.categories ? ev.categories.split(',')[0].trim() : 'General';
+                const primaryCat = ev.categories ? String(typeof ev.categories === 'string' ? ev.categories : (ev.categories[0]?.name || 'General')).split(',')[0].trim() : 'General';
                 map[k].add(primaryCat);
                 curr.setDate(curr.getDate() + 1);
             }
@@ -332,7 +335,7 @@ const CalendarPage = () => {
                             <div key={ev.id} className="cal-timeline-item" onClick={() => navigate(`/event/${ev.id}`)}>
                                 <div className="cal-time-col">
                                     <span className="cal-time">
-                                        {ev.isAllDay ? 'ALL DAY' : formatTime(ev.tentative_start_time)}
+                                        {ev.is_all_day || ev.isAllDay ? 'ALL DAY' : formatTime(ev.tentative_start_time)}
                                     </span>
                                     <div className="cal-timeline-line" />
                                     <div className="cal-timeline-dot" style={{ background: catColor }} />

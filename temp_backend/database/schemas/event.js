@@ -50,6 +50,10 @@ const Event = sequelize.define('Event', {
     image_url: {
         type: DataTypes.TEXT,
         allowNull: true
+    },
+    is_all_day: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 }, {
     tableName: 'event',
