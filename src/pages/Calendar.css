@@ -169,9 +169,10 @@
     color: white;
 }
 
+/* Indicators should be visible even on holidays/exams */
 .cal-grid-day.holiday .cal-grid-indicators,
 .cal-grid-day.exam .cal-grid-indicators {
-    display: none;
+    display: flex;
 }
 
 /* Exams Highlight - Solid Bright Red */
