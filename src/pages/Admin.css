@@ -377,3 +377,85 @@ th {
         grid-column: span 1;
     }
 }
+
+/* Image Upload Specifics */
+.image-upload-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.file-upload-cell, .url-upload-cell {
+    width: 100%;
+}
+
+.upload-or-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--grey-400);
+}
+
+.upload-or-divider::before, .upload-or-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--grey-100);
+    margin: 0 10px;
+}
+
+.file-input-elegant {
+    width: 100%;
+    padding: 10px;
+    border: 2px dashed var(--grey-200);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    background: var(--grey-50);
+}
+
+.url-input-field {
+    width: 100%;
+}
+
+.image-preview-container {
+    margin-top: 1rem;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--grey-200);
+    max-height: 150px;
+}
+
+.image-preview-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+@media (min-width: 640px) {
+    .image-upload-input-group {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .upload-or-divider {
+        flex-direction: column;
+        padding: 0 5px;
+    }
+
+    .upload-or-divider::before, .upload-or-divider::after {
+        height: 10px;
+        width: 1px;
+        margin: 5px 0;
+    }
+
+    .file-upload-cell {
+        flex: 1.2;
+    }
+    
+    .url-upload-cell {
+        flex: 2;
+    }
+}

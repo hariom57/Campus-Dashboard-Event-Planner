@@ -1132,24 +1132,34 @@ const Admin = () => {
                             <form onSubmit={handleSubmit} className="event-form">
                                 <div className="form-group">
                                     <label>Event Banner Image</label>
-                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                        <input 
-                                            type="file" 
-                                            accept="image/*" 
-                                            onChange={handleImageUpload} 
-                                            style={{ flex: 1, padding: '8px', border: '1px dashed var(--grey-300)' }} 
-                                        />
-                                        <span style={{ fontSize: '0.85rem', color: 'var(--grey-500)' }}>OR</span>
-                                        <input
-                                            type="text"
-                                            name="image_url"
-                                            value={newEvent.image_url || ''}
-                                            onChange={handleInputChange}
-                                            placeholder="Paste Image URL"
-                                            style={{ flex: 1 }}
-                                        />
+                                    <div className="image-upload-input-group">
+                                        <div className="file-upload-cell">
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                onChange={handleImageUpload} 
+                                                className="file-input-elegant"
+                                            />
+                                        </div>
+                                        <div className="upload-or-divider">
+                                            <span>OR</span>
+                                        </div>
+                                        <div className="url-upload-cell">
+                                            <input
+                                                type="text"
+                                                name="image_url"
+                                                value={newEvent.image_url || ''}
+                                                onChange={handleInputChange}
+                                                placeholder="Paste Image URL"
+                                                className="url-input-field"
+                                            />
+                                        </div>
                                     </div>
-                                    {newEvent.image_url && <img src={newEvent.image_url} alt="Preview" style={{ marginTop: '10px', maxHeight: '100px', borderRadius: '8px', objectFit: 'cover' }} />}
+                                    {newEvent.image_url && (
+                                        <div className="image-preview-container">
+                                            <img src={newEvent.image_url} alt="Preview" />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="form-group">
