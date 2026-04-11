@@ -790,31 +790,46 @@ const Admin = () => {
                     </div>
                     <div className="admin-header-actions">
                         {canManageEvents && (
-                            <button className="btn btn-outline" onClick={() => setActiveTab('events')}>
+                            <button 
+                                className={`btn ${activeTab === 'events' ? 'btn-yellow' : 'btn-outline'}`} 
+                                onClick={() => setActiveTab('events')}
+                            >
                                 <Calendar size={18} />
                                 Manage Events
                             </button>
                         )}
                         {canManageLocations && (
-                            <button className="btn btn-outline" onClick={() => setActiveTab('locations')}>
+                            <button 
+                                className={`btn ${activeTab === 'locations' ? 'btn-yellow' : 'btn-outline'}`} 
+                                onClick={() => setActiveTab('locations')}
+                            >
                                 <MapPin size={18} />
                                 Manage Locations
                             </button>
                         )}
                         {canManageEventCategories && (
-                            <button className="btn btn-outline" onClick={() => setActiveTab('categories')}>
+                            <button 
+                                className={`btn ${activeTab === 'categories' ? 'btn-yellow' : 'btn-outline'}`} 
+                                onClick={() => setActiveTab('categories')}
+                            >
                                 <Tags size={18} />
                                 Manage Categories
                             </button>
                         )}
                         {canManageAdmins && (
-                            <button className="btn btn-outline" onClick={() => setActiveTab('admins')}>
+                            <button 
+                                className={`btn ${activeTab === 'admins' ? 'btn-yellow' : 'btn-outline'}`} 
+                                onClick={() => setActiveTab('admins')}
+                            >
                                 <Users size={18} />
                                 Manage Admins
                             </button>
                         )}
                         {canManageClubAdmins && (
-                            <button className="btn btn-outline" onClick={() => setActiveTab('club-admins')}>
+                            <button 
+                                className={`btn ${activeTab === 'club-admins' ? 'btn-yellow' : 'btn-outline'}`} 
+                                onClick={() => setActiveTab('club-admins')}
+                            >
                                 <Users size={18} />
                                 Manage Club Admins
                             </button>
@@ -824,45 +839,15 @@ const Admin = () => {
 
                 {/* Stats Row (Mocked / Placeholder) */}
                 <div className="stats-grid grid-4 stagger">
-                    {/* Stats Removed/Reduced to keep it strict. Backend doesn't provide these counts directly yet. */}
                     <div className="stat-card card animate-fade-in">
                         <div className="stat-icon" style={{ background: 'rgba(113, 51, 100, 0.1)', color: 'var(--brand-purple)' }}>
                             <Calendar size={24} />
                         </div>
                         <div>
                             <h3>{events.length}</h3>
-                            <p>Manage Events</p>
+                            <p>Events Managed</p>
                         </div>
                     </div>
-                </div>
-
-                {/* Main Content Tabs */}
-                <div className="admin-tabs">
-                    {canManageEvents && (
-                        <button className={`tab-btn ${activeTab === 'events' ? 'active' : ''}`} onClick={() => setActiveTab('events')}>
-                            Manage Events
-                        </button>
-                    )}
-                    {canManageLocations && (
-                        <button className={`tab-btn ${activeTab === 'locations' ? 'active' : ''}`} onClick={() => setActiveTab('locations')}>
-                            Manage Locations
-                        </button>
-                    )}
-                    {canManageEventCategories && (
-                        <button className={`tab-btn ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => setActiveTab('categories')}>
-                            Manage Categories
-                        </button>
-                    )}
-                    {canManageAdmins && (
-                        <button className={`tab-btn ${activeTab === 'admins' ? 'active' : ''}`} onClick={() => setActiveTab('admins')}>
-                            Manage Admins
-                        </button>
-                    )}
-                    {canManageClubAdmins && (
-                        <button className={`tab-btn ${activeTab === 'club-admins' ? 'active' : ''}`} onClick={() => setActiveTab('club-admins')}>
-                            Manage Club Admins
-                        </button>
-                    )}
                 </div>
 
                 {activeTab === 'events' && canManageEvents && (
