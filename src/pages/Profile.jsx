@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader, LogOut } from 'lucide-react';
+import { Loader, LogOut, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import tinkeringLogo from '../assets/tinkering_logo.png';
@@ -25,6 +25,7 @@ const ProfilePage = () => {
     const [saving, setSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState('');
     const [error, setError] = useState('');
+    const [clubSearch, setClubSearch] = useState('');
 
     useEffect(() => {
         let active = true;
@@ -167,27 +168,46 @@ const ProfilePage = () => {
 
                         <section className="prefs-block">
                             <h3>Clubs</h3>
-                            <p>All clubs are enabled by default. Click a club to hide its events from your feed.</p>
+                            <p>All clubs are enabled by default. Uncheck a club to hide its events from your feed.</p>
+                            <div className="pref-search-wrap">
+                                <Search size={15} className="pref-search-icon" />
+                                <input
+                                    type="text"
+                                    className="pref-search-input"
+                                    placeholder="Search clubs..."
+                                    value={clubSearch}
+                                    onChange={(e) => setClubSearch(e.target.value)}
+                                />
+                                {clubSearch && (
+                                    <button className="pref-search-clear" onClick={() => setClubSearch('')}>✕</button>
+                                )}
+                            </div>
                             <div className="pref-ui-editor pref-ui-list">
-                                {clubs.map((club) => {
-                                    const isHidden = preferences.not_preferred_clubs.includes(Number(club.id));
-                                    const isChecked = !isHidden;
-                                    return (
-                                        <div 
-                                            key={club.id} 
-                                            className={`pref-ui-row ${isHidden ? 'strikethrough' : ''}`}
-                                            onClick={() => toggleClubVisibility(Number(club.id))}
-                                        >
-                                            <span className="pref-club-name">{club.name}</span>
-                                            <input 
-                                                type="checkbox" 
-                                                checked={isChecked} 
-                                                readOnly
-                                                className="pref-checkbox"
-                                            />
-                                        </div>
-                                    );
-                                })}
+                                {clubs
+                                    .filter((club) => club.name.toLowerCase().includes(clubSearch.toLowerCase()))
+                                    .map((club) => {
+                                        const isHidden = preferences.not_preferred_clubs.includes(Number(club.id));
+                                        const isChecked = !isHidden;
+                                        return (
+                                            <div
+                                                key={club.id}
+                                                className={`pref-ui-row ${isHidden ? 'strikethrough' : ''}`}
+                                                onClick={() => toggleClubVisibility(Number(club.id))}
+                                            >
+                                                <span className="pref-club-name">{club.name}</span>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    readOnly
+                                                    className="pref-checkbox"
+                                                />
+                                            </div>
+                                        );
+                                    })
+                                }
+                                {clubs.filter((club) => club.name.toLowerCase().includes(clubSearch.toLowerCase())).length === 0 && (
+                                    <p className="pref-search-empty">No clubs match your search.</p>
+                                )}
                             </div>
                         </section>
                     </div>
