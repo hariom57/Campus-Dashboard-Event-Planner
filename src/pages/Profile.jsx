@@ -168,27 +168,24 @@ const ProfilePage = () => {
                         <section className="prefs-block">
                             <h3>Clubs</h3>
                             <p>All clubs are enabled by default. Click a club to hide its events from your feed.</p>
-                            <div className="pref-choice-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                            <div className="pref-ui-editor pref-ui-list">
                                 {clubs.map((club) => {
                                     const isHidden = preferences.not_preferred_clubs.includes(Number(club.id));
+                                    const isChecked = !isHidden;
                                     return (
-                                        <button
-                                            key={club.id}
-                                            type="button"
+                                        <div 
+                                            key={club.id} 
+                                            className={`pref-ui-row ${isHidden ? 'strikethrough' : ''}`}
                                             onClick={() => toggleClubVisibility(Number(club.id))}
-                                            style={{
-                                                padding: '8px 16px',
-                                                borderRadius: '20px',
-                                                border: '1px solid var(--grey-300)',
-                                                background: isHidden ? 'var(--grey-100)' : 'var(--brand-purple-pale)',
-                                                color: isHidden ? 'var(--grey-500)' : 'var(--brand-purple)',
-                                                textDecoration: isHidden ? 'line-through' : 'none',
-                                                cursor: 'pointer',
-                                                fontWeight: '500'
-                                            }}
                                         >
-                                            {club.name}
-                                        </button>
+                                            <span className="pref-club-name">{club.name}</span>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isChecked} 
+                                                readOnly
+                                                className="pref-checkbox"
+                                            />
+                                        </div>
                                     );
                                 })}
                             </div>
