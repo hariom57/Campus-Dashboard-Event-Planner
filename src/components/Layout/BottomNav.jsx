@@ -29,7 +29,7 @@ const BottomNav = () => {
                 <span>Clubs</span>
             </NavLink>
 
-            {user?.isAdmin && (
+            {(user?.isAdmin || (user?.managedClubIds && user.managedClubIds.length > 0)) && (
                 <NavLink to="/admin" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
                     <ShieldCheck size={22} />
                     <span>Admin</span>

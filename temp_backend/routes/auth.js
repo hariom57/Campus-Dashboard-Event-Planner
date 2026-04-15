@@ -241,19 +241,75 @@ router.get('/user', userData, async (req, res) => {
             });
         }
 
-        const permissionNames = Array.isArray(req.user.permission_names) ? req.user.permission_names : [];
-        const is_admin = permissionNames.length > 0;
+        const userId = req.user.user_id;
+
+        // Fetch latest permissions and club admin status from database
+        const permissionRows = await AdminPermissionAlloted.findAll({
+            where: { user_id: userId },
+            attributes: ['admin_permission_id']
+        });
+
+        const permission_ids = permissionRows.map((row) => Number(row.admin_permission_id));
+
+        const [permissions, clubAdminRows, preferredClubRows, notPreferredClubRows, preferredCategoryRows, notPreferredCategoryRows] = await Promise.all([
+            permission_ids.length > 0
+                ? AdminPermission.findAll({
+                    where: { id: permission_ids },
+                    attributes: ['id', 'name']
+                })
+                : Promise.resolve([]),
+            ClubAdmin.findAll({
+                where: { user_id: userId },
+                attributes: ['club_id']
+            }),
+            UserPreferredClub.findAll({
+                where: { user_id: userId },
+                attributes: ['club_id']
+            }),
+            UserNotPreferredClub.findAll({
+                where: { user_id: userId },
+                attributes: ['club_id']
+            }),
+            UserPreferredCategory.findAll({
+                where: { user_id: userId },
+                attributes: ['event_category_id']
+            }),
+            UserNotPreferredCategory.findAll({
+                where: { user_id: userId },
+                attributes: ['event_category_id']
+            })
+        ]);
+
+        const permission_names = permissions.map((row) => row.name);
+        const normalizedPermissionNames = permission_names.map(normalizePermissionName);
+        const hasEventCrudPermission = normalizedPermissionNames.includes('event_crud') || permission_ids.includes(EVENT_CRUD_PERMISSION_ID);
+
+        let club_admin_club_ids = clubAdminRows.map((row) => Number(row.club_id));
+        const preferred_clubs = preferredClubRows.map((row) => Number(row.club_id));
+        const not_preferred_clubs = notPreferredClubRows.map((row) => Number(row.club_id));
+        const preferred_categories = preferredCategoryRows.map((row) => Number(row.event_category_id));
+        const not_preferred_categories = notPreferredCategoryRows.map((row) => Number(row.event_category_id));
+
+        if (hasEventCrudPermission) {
+            const allClubs = await Club.findAll({
+                attributes: ['id'],
+                order: [['id', 'ASC']]
+            });
+            club_admin_club_ids = allClubs.map((club) => Number(club.id));
+        }
+
+        const is_admin = permission_names.length > 0;
 
         return res.json({
             userData: user,
             authContext: {
                 is_admin,
-                permission_names: permissionNames,
-                club_admin_club_ids: req.user.club_admin_club_ids || [],
-                preferred_clubs: req.user.preferred_clubs || [],
-                not_preferred_clubs: req.user.not_preferred_clubs || [],
-                preferred_categories: req.user.preferred_categories || [],
-                not_preferred_categories: req.user.not_preferred_categories || []
+                permission_names,
+                club_admin_club_ids,
+                preferred_clubs,
+                not_preferred_clubs,
+                preferred_categories,
+                not_preferred_categories
             }
         });
 

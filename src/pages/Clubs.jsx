@@ -22,7 +22,13 @@ const ClubsPage = () => {
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState(emptyForm);
 
-    const canManageClubs = user?.canManageClubs || false;
+    const isGlobalAdmin = user?.canManageClubs || false;
+    const managedClubIds = user?.managedClubIds || [];
+
+    const canEditClub = (club) => {
+        if (isGlobalAdmin) return true;
+        return club && managedClubIds.includes(Number(club.id));
+    };
 
     useEffect(() => {
         const fetchClubs = async () => {
@@ -68,14 +74,14 @@ const ClubsPage = () => {
     };
 
     const openCreateModal = () => {
-        if (!canManageClubs) return;
+        if (!isGlobalAdmin) return;
         setEditingClubId(null);
         setFormData(emptyForm);
         setShowForm(true);
     };
 
     const openEditModal = (club) => {
-        if (!canManageClubs) return;
+        if (!canEditClub(club)) return;
         setEditingClubId(club.id);
         setFormData({
             name: club.name || '',
@@ -104,7 +110,17 @@ const ClubsPage = () => {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        if (!canManageClubs) return;
+        
+        // Final permission check before submit
+        const isEditing = !!editingClubId;
+        const targetClub = isEditing ? clubs.find(c => c.id === editingClubId) : null;
+        
+        if (isEditing) {
+            if (!canEditClub(targetClub)) return;
+        } else {
+            if (!isGlobalAdmin) return;
+        }
+
         setSaving(true);
 
         try {
@@ -125,7 +141,7 @@ const ClubsPage = () => {
     };
 
     const handleDelete = async (club) => {
-        if (!canManageClubs) return;
+        if (!isGlobalAdmin) return;
         if (!window.confirm(`Delete ${club.name}?`)) return;
 
         try {
@@ -173,7 +189,7 @@ const ClubsPage = () => {
                         <span>{clubs.length} Clubs</span>
                     </div>
 
-                    {canManageClubs && (
+                    {isGlobalAdmin && (
                         <button className="btn btn-yellow clubs-add-btn" onClick={openCreateModal}>
                             <Plus size={18} />
                             Add Club
@@ -203,14 +219,16 @@ const ClubsPage = () => {
                         {filteredClubs.length > 0 ? (
                             filteredClubs.map((club) => (
                                 <article key={club.id} className="club-card card">
-                                    {canManageClubs && (
+                                    {(isGlobalAdmin || canEditClub(club)) && (
                                         <div className="club-card-actions">
                                             <button className="btn-icon club-action-btn" onClick={() => openEditModal(club)} title="Edit Club">
                                                 <Edit size={16} />
                                             </button>
-                                            <button className="btn-icon club-action-btn danger" onClick={() => handleDelete(club)} title="Delete Club">
-                                                <Trash2 size={16} />
-                                            </button>
+                                            {isGlobalAdmin && (
+                                                <button className="btn-icon club-action-btn danger" onClick={() => handleDelete(club)} title="Delete Club">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
                                         </div>
                                     )}
 
@@ -250,7 +268,7 @@ const ClubsPage = () => {
                     </div>
                 )}
 
-                {showForm && canManageClubs && (
+                {showForm && (isGlobalAdmin || (editingClubId && canEditClub(clubs.find(c => c.id === editingClubId)))) && (
                     <div className="modal-overlay animate-fade-in">
                         <div className="modal-content card clubs-modal">
                             <div className="modal-header clubs-modal-header">
