@@ -7,6 +7,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [notifications, setNotifications] = useState([]);
+    const [backendSlow, setBackendSlow] = useState(false);
 
     useEffect(() => {
         // Load notifications from local storage if available
@@ -17,6 +18,9 @@ export const AuthProvider = ({ children }) => {
 
         // Check if user is logged in
         const checkAuth = async () => {
+            // Show a "backend is waking up" hint after 8 seconds
+            const slowTimer = setTimeout(() => setBackendSlow(true), 8000);
+
             try {
                 // 1. Identity Check - includes admin status and other privileges from JWT
                 const userData = await authService.getCurrentUser();
@@ -38,6 +42,8 @@ export const AuthProvider = ({ children }) => {
                 // Identity fetch failed (401) is the expected path for logged-out users
                 setUser(null);
             } finally {
+                clearTimeout(slowTimer);
+                setBackendSlow(false);
                 setLoading(false);
             }
         };
@@ -90,7 +96,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout, notifications, toggleNotification, updateUserPreferences }}>
+        <AuthContext.Provider value={{ user, loading, backendSlow, login, logout, notifications, toggleNotification, updateUserPreferences }}>
             {children}
         </AuthContext.Provider>
     );

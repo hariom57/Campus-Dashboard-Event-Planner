@@ -28,7 +28,7 @@ const extractCategoryNames = (event) => {
 
 const Home = () => {
     const navigate = useNavigate();
-    const { user, loading: authLoading, notifications } = useAuth();
+    const { user, loading: authLoading, notifications, backendSlow } = useAuth();
     const [dynamicEvents, setDynamicEvents] = useState([]);
     const [academicEvents, setAcademicEvents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -293,6 +293,12 @@ const Home = () => {
                     <div className="home-loading">
                         <div className="home-spinner" />
                         <p>Loading events...</p>
+                        {(backendSlow || authLoading) && (
+                            <div className="home-backend-slow-banner">
+                                <span>⏳</span>
+                                <span>The server is waking up from sleep — this can take up to 60 seconds on the free plan. Please wait…</span>
+                            </div>
+                        )}
                     </div>
                 ) : filteredEvents.length === 0 ? (
                     <div className="home-empty">
