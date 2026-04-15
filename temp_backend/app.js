@@ -109,6 +109,8 @@ app.use('/admin-permissions', require('./routes/adminPermissions.js'));
 app.use('/academic-calendar', require('./routes/academicCalendar.js'));
 // Clubs routes
 app.use('/clubs', require('./routes/club.js'));
+// Personal todo routes
+app.use('/todos', require('./routes/todo.js'));
 
 app.get('/', async (_, res) => {
 

@@ -1,41 +1,72 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, CheckCircle, Circle, ClipboardList, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Trash2, CheckCircle, Circle, ClipboardList, Sparkles, Loader } from 'lucide-react';
+import todoService from '../services/todo';
 import './Todo.css';
 
 const Todo = () => {
-    const [todos, setTodos] = useState(() => {
-        const saved = localStorage.getItem('personal_todos');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [todos, setTodos] = useState([]);
     const [inputValue, setInputValue] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    const loadTodos = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError('');
+            const data = await todoService.getAll();
+            setTodos(data);
+        } catch (err) {
+            console.error('Failed to load todos', err);
+            setError('Could not load your tasks. Please refresh the page.');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        localStorage.setItem('personal_todos', JSON.stringify(todos));
-    }, [todos]);
+        loadTodos();
+    }, [loadTodos]);
 
-    const handleAddTodo = (e) => {
+    const handleAddTodo = async (e) => {
         e.preventDefault();
-        if (!inputValue.trim()) return;
-        
-        const newTodo = {
-            id: Date.now(),
-            text: inputValue.trim(),
-            completed: false,
-            createdAt: new Date().toISOString()
-        };
-        
-        setTodos([newTodo, ...todos]);
-        setInputValue('');
+        if (!inputValue.trim() || saving) return;
+
+        setSaving(true);
+        try {
+            const newTodo = await todoService.create(inputValue.trim());
+            setTodos(prev => [newTodo, ...prev]);
+            setInputValue('');
+        } catch (err) {
+            console.error('Failed to create todo', err);
+            setError('Could not save task. Please try again.');
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const toggleTodo = (id) => {
-        setTodos(todos.map(todo => 
-            todo.id === id ? { ...todo, completed: !todo.completed } : todo
-        ));
+    const toggleTodo = async (todo) => {
+        // Optimistic UI update
+        setTodos(prev => prev.map(t => t.id === todo.id ? { ...t, completed: !t.completed } : t));
+        try {
+            await todoService.toggle(todo.id, !todo.completed);
+        } catch (err) {
+            // Revert on failure
+            console.error('Failed to toggle todo', err);
+            setTodos(prev => prev.map(t => t.id === todo.id ? { ...t, completed: todo.completed } : t));
+        }
     };
 
-    const deleteTodo = (id) => {
-        setTodos(todos.filter(todo => todo.id !== id));
+    const deleteTodo = async (id) => {
+        // Optimistic UI update
+        setTodos(prev => prev.filter(t => t.id !== id));
+        try {
+            await todoService.delete(id);
+        } catch (err) {
+            console.error('Failed to delete todo', err);
+            // Reload on failure to restore real state
+            loadTodos();
+        }
     };
 
     const completedCount = todos.filter(t => t.completed).length;
@@ -57,25 +88,33 @@ const Todo = () => {
 
             <div className="todo-content container">
                 <form className="todo-input-card card" onSubmit={handleAddTodo}>
-                    <input 
-                        type="text" 
-                        placeholder="What's on your mind? (e.g. Lab report due tomorrow)" 
+                    <input
+                        type="text"
+                        placeholder="What's on your mind? (e.g. Lab report due tomorrow)"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
+                        disabled={saving}
                     />
-                    <button type="submit" className="todo-add-btn" disabled={!inputValue.trim()}>
-                        <Plus size={20} />
+                    <button type="submit" className="todo-add-btn" disabled={!inputValue.trim() || saving}>
+                        {saving ? <Loader size={18} className="spin" /> : <Plus size={20} />}
                     </button>
                 </form>
 
+                {error && <p className="todo-error-msg">{error}</p>}
+
                 <div className="todo-list-section">
-                    {todos.length > 0 ? (
+                    {loading ? (
+                        <div className="todo-loading card">
+                            <Loader size={28} className="spin" />
+                            <p>Loading your tasks...</p>
+                        </div>
+                    ) : todos.length > 0 ? (
                         <div className="todo-items">
                             {todos.map(todo => (
                                 <div key={todo.id} className={`todo-item card ${todo.completed ? 'completed' : ''}`}>
-                                    <button 
-                                        className="todo-check-btn" 
-                                        onClick={() => toggleTodo(todo.id)}
+                                    <button
+                                        className="todo-check-btn"
+                                        onClick={() => toggleTodo(todo)}
                                     >
                                         {todo.completed ? (
                                             <CheckCircle size={22} className="check-icon" />
@@ -84,8 +123,8 @@ const Todo = () => {
                                         )}
                                     </button>
                                     <span className="todo-text">{todo.text}</span>
-                                    <button 
-                                        className="todo-delete-btn" 
+                                    <button
+                                        className="todo-delete-btn"
                                         onClick={() => deleteTodo(todo.id)}
                                     >
                                         <Trash2 size={18} />

@@ -14,6 +14,7 @@ const UserNotPreferredCategory = require('./userNotPreferredCategory');
 const UserNotPreferredClub = require('./userNotPreferredClub');
 const UserPreferredCategory = require('./userPreferredCategory');
 const UserPreferredClub = require('./userPreferredClub');
+const UserTodo = require('./userTodo');
 
 // ─── Associations ────────────────────────────────────────────────────────────
 
@@ -66,6 +67,10 @@ UserPreferredCategory.belongsTo(EventCategory, { foreignKey: 'event_category_id'
 UserPreferredClub.belongsTo(User, { foreignKey: 'user_id' });
 UserPreferredClub.belongsTo(Club, { foreignKey: 'club_id' });
 
+// UserTodo -> User
+UserTodo.belongsTo(User, { foreignKey: 'user_id' });
+User.hasMany(UserTodo, { foreignKey: 'user_id' });
+
 // ─── Export ──────────────────────────────────────────────────────────────────
 
 module.exports = {
@@ -85,4 +90,5 @@ module.exports = {
     UserNotPreferredClub,
     UserPreferredCategory,
     UserPreferredClub,
+    UserTodo,
 };
