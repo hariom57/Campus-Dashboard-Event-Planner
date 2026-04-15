@@ -1087,7 +1087,7 @@ const Admin = () => {
                             </div>
 
                             <div className="form-row">
-                                <div className="form-group" style={{ flex: 1 }}>
+                                <div className="form-group">
                                     <label>Add Club Admin (Enrollment Number)</label>
                                     <input
                                         value={newClubAdminEnrollment}
@@ -1249,7 +1249,7 @@ const Admin = () => {
                                 </div>
 
                                 <div className="form-row date-inputs">
-                                    <div className="form-group" style={{ flex: 1 }}>
+                                    <div className="form-group">
                                         <label>{newEvent.isMultiDay ? 'Start Date' : 'Date'}</label>
                                         <input
                                             type="date"
@@ -1260,7 +1260,7 @@ const Admin = () => {
                                         />
                                     </div>
                                     {newEvent.isMultiDay && (
-                                        <div className="form-group" style={{ flex: 1 }}>
+                                        <div className="form-group">
                                             <label>End Date</label>
                                             <input
                                                 type="date"
@@ -1272,7 +1272,7 @@ const Admin = () => {
                                         </div>
                                     )}
                                     {!newEvent.isAllDay && (
-                                        <div className="form-group" style={{ flex: 1 }}>
+                                        <div className="form-group">
                                             <label>Time</label>
                                             <input
                                                 type="time"

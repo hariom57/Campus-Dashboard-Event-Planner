@@ -234,6 +234,19 @@
     grid-column: span 2;
 }
 
+.form-row {
+    display: flex;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.form-row > .form-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+
 .form-group label {
     font-size: 0.8rem;
     font-weight: 600;
@@ -419,7 +432,12 @@ th {
     .form-group.full-width {
         grid-column: span 1;
     }
+    
+    .form-row > .form-group {
+        min-width: 100%;
+    }
 }
+
 
 /* Image Upload Specifics */
 .image-upload-input-group {

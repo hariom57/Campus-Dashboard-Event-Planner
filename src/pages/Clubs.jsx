@@ -279,22 +279,28 @@ const ClubsPage = () => {
 
                                     <div className="form-group full-width">
                                         <label>Club Logo</label>
-                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                    <div className="image-upload-input-group">
+                                        <div className="file-upload-cell">
                                             <input 
                                                 type="file" 
                                                 accept="image/*" 
                                                 onChange={handleLogoUpload} 
-                                                style={{ flex: 1, padding: '8px', border: '1px dashed var(--grey-300)' }} 
+                                                className="file-input-elegant"
                                             />
-                                            <span style={{ fontSize: '0.85rem', color: 'var(--grey-500)' }}>OR</span>
+                                        </div>
+                                        <div className="upload-or-divider">
+                                            <span>OR</span>
+                                        </div>
+                                        <div className="url-upload-cell">
                                             <input 
                                                 name="logo_url" 
                                                 value={formData.logo_url || ''} 
                                                 onChange={handleChange} 
                                                 placeholder="Paste Logo URL"
-                                                style={{ flex: 1 }} 
+                                                className="url-input-field"
                                             />
                                         </div>
+                                    </div>
                                         {formData.logo_url && <img src={formData.logo_url} alt="Logo Preview" style={{ marginTop: '10px', width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />}
                                     </div>
                                 </div>

@@ -280,3 +280,127 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
+
+/* Form Utilities (Shared with Admin but scoped or repeated here for safety) */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.form-group.full-width {
+    grid-column: span 2;
+}
+
+.form-group label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--grey-600);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--grey-200);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    background: white;
+    color: var(--brand-black);
+    width: 100%;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: var(--brand-purple);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(113, 51, 100, 0.05);
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--grey-100);
+}
+
+/* Image Upload Group */
+.image-upload-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.file-input-elegant {
+    width: 100%;
+    padding: 10px;
+    border: 2px dashed var(--grey-200);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    background: var(--grey-50);
+}
+
+.upload-or-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--grey-400);
+}
+
+.upload-or-divider::before, .upload-or-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--grey-100);
+    margin: 0 10px;
+}
+
+@media (min-width: 640px) {
+    .image-upload-input-group {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .upload-or-divider {
+        flex-direction: column;
+        padding: 0 5px;
+    }
+
+    .upload-or-divider::before, .upload-or-divider::after {
+        height: 10px;
+        width: 1px;
+        margin: 5px 0;
+    }
+
+    .file-upload-cell {
+        flex: 1.2;
+    }
+    
+    .url-upload-cell {
+        flex: 2;
+    }
+}
+
+@media (max-width: 640px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-group.full-width {
+        grid-column: span 1;
+    }
+}
