@@ -209,8 +209,7 @@ const Admin = () => {
 
     const fetchEvents = async () => {
         try {
-            // Fetch more events for the admin view to avoid pagination confusion
-            const data = await eventService.getAllEvents(1, 100);
+            const data = await eventService.getAdminEvents(1, 100);
             setEvents(data);
         } catch (error) {
             console.error("Failed to fetch events", error);

@@ -169,6 +169,20 @@ const eventService = {
         return response.data;
     },
 
+    // Get events for the admin panel (club-scoped: only shows events for the admin's clubs)
+    getAdminEvents: async (page = 1, limit = 100) => {
+        try {
+            const response = await api.get('/events/admin/all', { params: { page, limit } });
+            const normalizedEvents = Array.isArray(response.data?.events)
+                ? response.data.events.map(normalizeListEvent).filter(Boolean)
+                : [];
+            return normalizedEvents;
+        } catch (error) {
+            console.error('Error fetching admin events:', error);
+            return [];
+        }
+    },
+
     // Get preferred club events
     getPreferredClubEvents: async () => {
         const response = await api.get('/events/clubs/preferred');

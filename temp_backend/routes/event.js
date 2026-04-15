@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Event, Club, Location, EventCategory, EventCategoryAlloted, UserPreferredCategory, UserNotPreferredCategory, UserPreferredClub, UserNotPreferredClub, sequelize } = require('../database/schemas');
+const { Event, Club, Location, EventCategory, EventCategoryAlloted, UserPreferredCategory, UserNotPreferredCategory, UserPreferredClub, UserNotPreferredClub, AdminPermissionAlloted, ClubAdmin, sequelize } = require('../database/schemas/index');
 const { userLoggedIn, userData } = require('../middlewares/userAuth');
 const { checkEventPermission } = require('../middlewares/permissions/event');
 const { Op } = require('sequelize');
@@ -94,7 +94,10 @@ const standardFlatAttributes = [
     'is_all_day'
 ];
 
-// Protected route to get all current events
+// Event CRUD permission ID — must match value in admin_permission table
+const EVENT_CRUD_PERMISSION_ID = Number(process.env.EVENT_CRUD_PERMISSION_ID || 1);
+
+// Public feed route — returns ALL events for the home feed (unfiltered by club admin scope)
 router.get('/all', userLoggedIn, async (req, res) => {
     try {
         const { page, limit, offset } = getPaginationParams(req);
@@ -189,6 +192,105 @@ router.get('/all', userLoggedIn, async (req, res) => {
         });
     }
 });
+
+// Admin-only route — club-scoped event listing for the Admin Panel
+// - Global event admins (EVENT_CRUD_PERMISSION_ID) see ALL events
+// - Club-scoped admins only see events belonging to their managed clubs
+router.get('/admin/all', userData, async (req, res) => {
+    try {
+        const userId = req.user.user_id;
+        const { page, limit, offset } = getPaginationParams(req);
+        const whereClause = {};
+
+        const [globalPermission, clubAdminRows] = await Promise.all([
+            AdminPermissionAlloted.findOne({
+                where: { user_id: userId, admin_permission_id: EVENT_CRUD_PERMISSION_ID },
+                attributes: ['user_id']
+            }),
+            ClubAdmin.findAll({
+                where: { user_id: userId },
+                attributes: ['club_id'],
+                raw: true
+            })
+        ]);
+
+        if (!globalPermission) {
+            const managedClubIds = clubAdminRows.map(row => Number(row.club_id));
+            if (managedClubIds.length === 0) {
+                return res.json({
+                    events: [],
+                    ...buildPaginationMeta(0, page, limit)
+                });
+            }
+            whereClause.club_id = { [Op.in]: managedClubIds };
+        }
+
+        const [count, events] = await Promise.all([
+            Event.count({ where: whereClause }),
+            Event.findAll({
+                attributes: standardFlatAttributes,
+                include: [
+                    { model: Club, attributes: [], required: false },
+                    { model: Location, attributes: [], required: false }
+                ],
+                where: whereClause,
+                order: [['tentative_start_time', 'ASC']],
+                limit,
+                offset,
+                raw: true,
+                subQuery: false
+            })
+        ]);
+
+        const eventIds = events.map((ev) => ev.id);
+        let categoryRows = [];
+        if (eventIds.length > 0) {
+            categoryRows = await EventCategoryAlloted.findAll({
+                where: { event_id: { [Op.in]: eventIds } },
+                attributes: ['event_id', 'event_category_id'],
+                raw: true,
+            });
+        }
+
+        const categoryIds = Array.from(new Set(categoryRows.map((row) => row.event_category_id)));
+        const allCategories = categoryIds.length > 0
+            ? await EventCategory.findAll({
+                where: { id: { [Op.in]: categoryIds } },
+                attributes: ['id', 'name'],
+                raw: true,
+            })
+            : [];
+
+        const categoryNameById = new Map(allCategories.map((cat) => [Number(cat.id), cat.name]));
+        const categoryIdsByEventId = new Map();
+        for (const row of categoryRows) {
+            const eventId = Number(row.event_id);
+            const catId = Number(row.event_category_id);
+            const existing = categoryIdsByEventId.get(eventId) || [];
+            existing.push(catId);
+            categoryIdsByEventId.set(eventId, existing);
+        }
+
+        const enrichedEvents = events.map((ev) => {
+            const ids = categoryIdsByEventId.get(Number(ev.id)) || [];
+            const names = ids.map((id) => categoryNameById.get(id)).filter(Boolean);
+            return { ...ev, category_ids: ids, categories: names.join(', ') };
+        });
+
+        res.json({
+            events: enrichedEvents,
+            ...buildPaginationMeta(count, page, limit)
+        });
+    } catch (error) {
+        console.error('Error fetching admin events:', error);
+        res.status(500).json({
+            error: 'Internal server error',
+            message: 'Could not fetch events'
+        });
+    }
+});
+
+
 
 // Protected route to fetch total number of events
 router.get('/count', userLoggedIn, async (req, res) => {
