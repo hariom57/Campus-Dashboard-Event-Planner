@@ -1,12 +1,15 @@
 .admin-page {
+    padding-top: var(--space-sm);
     padding-bottom: var(--space-3xl);
+    min-height: 100vh;
+    background: var(--brand-purple-pale);
 }
 
 .admin-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding: var(--space-2xl) 0;
+    padding: var(--space-md) 0;
     flex-wrap: wrap;
     gap: var(--space-md);
 }

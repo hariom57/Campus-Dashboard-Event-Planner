@@ -749,7 +749,7 @@ const Admin = () => {
 
     if (authLoading) {
         return (
-            <div className="admin-page flex-center" style={{ paddingTop: '80px', minHeight: '100vh', background: 'var(--brand-purple-pale)' }}>
+            <div className="admin-page flex-center">
                 <Loader className="spin" size={32} color="var(--brand-purple)" />
             </div>
         );
@@ -757,7 +757,7 @@ const Admin = () => {
 
     if (!user) {
         return (
-            <div className="admin-page flex-center" style={{ paddingTop: '80px', minHeight: '100vh', background: 'var(--brand-purple-pale)' }}>
+            <div className="admin-page flex-center">
                 <div className="card text-center" style={{ padding: '3rem', maxWidth: '400px' }}>
                     <ShieldAlert size={48} color="var(--brand-purple)" style={{ margin: '0 auto 1rem' }} />
                     <h2>Admin Access Required</h2>
@@ -769,7 +769,7 @@ const Admin = () => {
 
     if (!hasAdminPanelAccess) {
         return (
-            <div className="admin-page flex-center" style={{ paddingTop: '80px', minHeight: '100vh', background: 'var(--brand-purple-pale)' }}>
+            <div className="admin-page flex-center">
                 <div className="card text-center" style={{ padding: '3rem', maxWidth: '400px' }}>
                     <ShieldAlert size={48} color="var(--red)" style={{ margin: '0 auto 1rem' }} />
                     <h2>Access Denied</h2>
@@ -781,7 +781,7 @@ const Admin = () => {
     }
 
     return (
-        <div className="admin-page" style={{ paddingTop: '80px', minHeight: '100vh', background: 'var(--brand-purple-pale)' }}>
+        <div className="admin-page">
             <div className="container">
                 <div className="admin-header">
                     <div>
