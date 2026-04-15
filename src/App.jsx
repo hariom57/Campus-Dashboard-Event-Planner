@@ -6,7 +6,7 @@ import eventReminderService from './services/eventReminders';
 import Home from './pages/Home';
 import CalendarPage from './pages/Calendar';
 import Admin from './pages/Admin';
-import ClubsPage from './pages/Clubs';
+import Todo from './pages/Todo';
 import LandingPage from './pages/LandingPage';
 import ProfilePage from './pages/Profile';
 import EventDetail from './pages/EventDetail';
@@ -40,7 +40,7 @@ function App() {
                     {/* App Routes (with Bottom Nav) */}
                     <Route path="/home" element={<AppShell><Home /></AppShell>} />
                     <Route path="/calendar" element={<AppShell><CalendarPage /></AppShell>} />
-                    <Route path="/clubs" element={<AppShell><ClubsPage /></AppShell>} />
+                    <Route path="/todo" element={<AppShell><Todo /></AppShell>} />
                     <Route path="/profile" element={<AppShell><ProfilePage /></AppShell>} />
                     <Route path="/admin" element={<AppShell><Admin /></AppShell>} />
                     <Route path="/event/:eventId" element={<AppShell><EventDetail /></AppShell>} />

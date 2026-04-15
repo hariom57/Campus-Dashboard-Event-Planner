@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutGrid, Calendar, ShieldCheck, Building2 } from 'lucide-react';
+import { LayoutGrid, Calendar, ShieldCheck, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './BottomNav.css';
 
@@ -24,9 +24,9 @@ const BottomNav = () => {
                 <span>Calendar</span>
             </NavLink>
 
-            <NavLink to="/clubs" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
-                <Building2 size={22} />
-                <span>Clubs</span>
+            <NavLink to="/todo" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+                <CheckCircle size={22} />
+                <span>Personal</span>
             </NavLink>
 
             {(user?.isAdmin || (user?.managedClubIds && user.managedClubIds.length > 0)) && (

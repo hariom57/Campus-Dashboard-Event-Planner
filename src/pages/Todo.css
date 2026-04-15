@@ -1,0 +1,209 @@
+.todo-page {
+    background: var(--brand-purple-pale);
+    min-height: 100%;
+    padding-bottom: 100px;
+}
+
+.todo-header-content h1 {
+    font-size: 1.5rem;
+    font-weight: 900;
+    margin: 0;
+    color: var(--brand-black);
+    letter-spacing: -0.03em;
+}
+
+.todo-subtitle {
+    font-size: 0.85rem;
+    color: var(--grey-500);
+    margin-top: 2px;
+}
+
+.todo-stat-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: white;
+    padding: 6px 12px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--brand-purple);
+    border: 1px solid var(--grey-100);
+}
+
+.todo-content {
+    padding: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.todo-input-card {
+    display: flex;
+    gap: 12px;
+    padding: 8px 8px 8px 16px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    border-color: var(--grey-200);
+    transition: all 0.2s ease;
+}
+
+.todo-input-card:focus-within {
+    border-color: var(--brand-purple);
+    box-shadow: 0 4px 20px rgba(113, 51, 100, 0.1);
+}
+
+.todo-input-card input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 0.95rem;
+    color: var(--brand-black);
+    background: transparent;
+    font-family: inherit;
+}
+
+.todo-input-card input::placeholder {
+    color: var(--grey-400);
+}
+
+.todo-add-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--brand-purple);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.todo-add-btn:hover:not(:disabled) {
+    background: var(--brand-purple-dark);
+    transform: scale(1.05);
+}
+
+.todo-add-btn:disabled {
+    background: var(--grey-200);
+    cursor: not-allowed;
+}
+
+.todo-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.todo-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 18px;
+    transition: all 0.2s ease;
+    border: 1px solid var(--grey-100);
+}
+
+.todo-item:hover {
+    border-color: var(--grey-200);
+    transform: translateY(-1px);
+}
+
+.todo-item.completed {
+    background: var(--grey-50);
+}
+
+.todo-check-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--grey-300);
+    transition: color 0.15s ease;
+}
+
+.todo-item.completed .todo-check-btn {
+    color: var(--brand-purple);
+}
+
+.todo-check-btn:hover {
+    color: var(--brand-purple);
+}
+
+.todo-text {
+    flex: 1;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--brand-black);
+    line-height: 1.4;
+}
+
+.todo-item.completed .todo-text {
+    text-decoration: line-through;
+    color: var(--grey-400);
+}
+
+.todo-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    color: var(--grey-200);
+    transition: all 0.15s ease;
+    border-radius: 8px;
+}
+
+.todo-delete-btn:hover {
+    color: var(--red);
+    background: #fef2f2;
+}
+
+.todo-empty {
+    padding: 48px 24px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--grey-400);
+}
+
+.todo-empty-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--grey-50);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    color: var(--grey-300);
+}
+
+.todo-empty h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--grey-600);
+    font-weight: 800;
+}
+
+.todo-empty p {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    max-width: 300px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.todo-item {
+    animation: fadeIn 0.3s ease forwards;
+}

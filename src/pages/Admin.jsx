@@ -64,6 +64,15 @@ const Admin = () => {
     const [newClubAdminEnrollment, setNewClubAdminEnrollment] = useState('');
     const [clubAdminsLoading, setClubAdminsLoading] = useState(false);
     const [clubAdminSaving, setClubAdminSaving] = useState(false);
+    const [showClubModal, setShowClubModal] = useState(false);
+    const [editingClubId, setEditingClubId] = useState(null);
+    const [clubSaving, setClubSaving] = useState(false);
+    const [clubForm, setClubForm] = useState({
+        name: '',
+        email: '',
+        description: '',
+        logo_url: ''
+    });
 
     // Build managed clubs from JWT club ids + public clubs list
     const clubs = managedClubs;
@@ -75,6 +84,8 @@ const Admin = () => {
     const hasGlobalEventCrud = user?.canManageEvents === true;
     const canManageAdmins = user?.canManageAdmins || false;
     const canManageClubAdmins = user?.canManageClubAdmins || false;
+    const canManageClubs = user?.canManageClubs || false;
+    const canManageSomeClubs = canManageClubs || managedClubIds.length > 0;
     const hasAdminPanelAccess = isAdmin || managedClubIds.length > 0;
 
     const [newEvent, setNewEvent] = useState({
@@ -165,6 +176,7 @@ const Admin = () => {
         if (canManageEventCategories) availableTabs.push('categories');
         if (canManageAdmins) availableTabs.push('admins');
         if (canManageClubAdmins) availableTabs.push('club-admins');
+        if (canManageSomeClubs) availableTabs.push('manage-clubs');
 
         if (availableTabs.length === 0) return;
         if (!availableTabs.includes(activeTab)) {
@@ -747,6 +759,68 @@ const Admin = () => {
         }
     };
 
+    const handleClubInputChange = (e) => {
+        const { name, value } = e.target;
+        setClubForm(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleClubLogoUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            setClubSaving(true);
+            const logoUrl = await uploadImageToCDN(file);
+            setClubForm(prev => ({ ...prev, logo_url: logoUrl }));
+            alert("Logo uploaded successfully!");
+        } catch (err) {
+            alert("Failed to upload logo. Please try again.");
+        } finally {
+            setClubSaving(false);
+        }
+    };
+
+    const openEditClubModal = (club) => {
+        setEditingClubId(club.id);
+        setClubForm({
+            name: club.name || '',
+            email: club.email || '',
+            description: club.description || '',
+            logo_url: club.logo_url || ''
+        });
+        setShowClubModal(true);
+    };
+
+    const handleClubSubmit = async (e) => {
+        e.preventDefault();
+        setClubSaving(true);
+        try {
+            if (editingClubId) {
+                await clubsService.updateClub(editingClubId, clubForm);
+                alert('Club updated successfully!');
+            } else {
+                await clubsService.createClub(clubForm);
+                alert('Club created successfully!');
+            }
+            // Refresh clubs list
+            const allClubs = await clubsService.getAllClubs();
+            let filtered = [];
+            if (canManageClubs || canManageClubAdmins) {
+                filtered = allClubs;
+            } else {
+                const allowedClubIds = new Set((managedClubIds || []).map((id) => Number(id)));
+                filtered = allClubs.filter((club) => allowedClubIds.has(Number(club.id)));
+            }
+            setManagedClubs(filtered);
+            setShowClubModal(false);
+        } catch (error) {
+            console.error('Failed to save club', error);
+            alert('Failed to save club.');
+        } finally {
+            setClubSaving(false);
+        }
+    };
+
     if (authLoading) {
         return (
             <div className="admin-page flex-center">
@@ -832,6 +906,15 @@ const Admin = () => {
                             >
                                 <Users size={18} />
                                 Manage Club Admins
+                            </button>
+                        )}
+                        {canManageSomeClubs && (
+                            <button 
+                                className={`btn ${activeTab === 'manage-clubs' ? 'btn-yellow' : 'btn-outline'}`} 
+                                onClick={() => setActiveTab('manage-clubs')}
+                            >
+                                <LayoutDashboard size={18} />
+                                Manage Clubs
                             </button>
                         )}
                     </div>
@@ -1147,6 +1230,67 @@ const Admin = () => {
                         ) : (
                             <div className="empty-state" style={{ padding: '2rem', textAlign: 'center' }}>
                                 <p style={{ color: 'var(--grey-500)' }}>No admins assigned for this club yet.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'manage-clubs' && canManageSomeClubs && (
+                    <div className="events-table-container card animate-fade-in">
+                        <div className="admin-locations-header">
+                            <h3>Club Management</h3>
+                            {canManageClubs && (
+                                <button className="btn btn-yellow" onClick={() => {
+                                    setEditingClubId(null);
+                                    setClubForm({ name: '', email: '', description: '', logo_url: '' });
+                                    setShowClubModal(true);
+                                }}>
+                                    <Plus size={16} />
+                                    Add New Club
+                                </button>
+                            )}
+                        </div>
+
+                        {managedClubs.length > 0 ? (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '1px solid var(--grey-200)', background: 'var(--brand-purple-pale)' }}>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Club Name</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Email</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600 }}>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {managedClubs.map((club) => (
+                                            <tr key={club.id} style={{ borderBottom: '1px solid var(--grey-100)' }}>
+                                                <td style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        {club.logo_url ? (
+                                                            <img src={club.logo_url} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                        ) : (
+                                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--grey-100)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                <Users size={16} color="var(--grey-400)" />
+                                                            </div>
+                                                        )}
+                                                        {club.name}
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{club.email}</td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <button className="btn-icon" style={{ display: 'inline-flex', marginRight: '0.5rem', color: 'var(--grey-500)' }} onClick={() => openEditClubModal(club)} title="Edit Club">
+                                                        <Edit size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+                                <LayoutDashboard size={48} style={{ color: 'var(--grey-300)', margin: '0 auto 1rem auto' }} />
+                                <p style={{ color: 'var(--grey-500)' }}>No clubs available for management.</p>
                             </div>
                         )}
                     </div>
@@ -1510,6 +1654,67 @@ const Admin = () => {
                                     </button>
                                     <button type="submit" className="btn btn-yellow" disabled={adminSaving}>
                                         {adminSaving ? <Loader size={16} className="animate-spin" /> : (editingAdminId ? 'Save Admin' : 'Create Admin')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {showClubModal && (
+                    <div className="modal-overlay animate-fade-in">
+                        <div className="modal-content card">
+                            <div className="modal-header">
+                                <h2>{editingClubId ? 'Edit Club' : 'Create Club'}</h2>
+                                <button className="btn-icon" onClick={() => setShowClubModal(false)}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <form onSubmit={handleClubSubmit} className="event-form">
+                                <div className="form-group">
+                                    <label>Club Name</label>
+                                    <input name="name" value={clubForm.name} onChange={handleClubInputChange} required />
+                                </div>
+                                <div className="form-group">
+                                    <label>Email</label>
+                                    <input name="email" type="email" value={clubForm.email} onChange={handleClubInputChange} required />
+                                </div>
+                                <div className="form-group">
+                                    <label>Description</label>
+                                    <textarea name="description" value={clubForm.description} onChange={handleClubInputChange} rows={4} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Club Logo</label>
+                                    <div className="image-upload-input-group">
+                                        <div className="file-upload-cell">
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                onChange={handleClubLogoUpload} 
+                                                className="file-input-elegant"
+                                            />
+                                        </div>
+                                        <div className="upload-or-divider">
+                                            <span>OR</span>
+                                        </div>
+                                        <div className="url-upload-cell">
+                                            <input 
+                                                name="logo_url" 
+                                                value={clubForm.logo_url || ''} 
+                                                onChange={handleClubInputChange} 
+                                                placeholder="Paste Logo URL"
+                                                className="url-input-field"
+                                            />
+                                        </div>
+                                    </div>
+                                    {clubForm.logo_url && <img src={clubForm.logo_url} alt="Logo Preview" style={{ marginTop: '10px', width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />}
+                                </div>
+                                <div className="modal-actions">
+                                    <button type="button" className="btn btn-outline" onClick={() => setShowClubModal(false)}>
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="btn btn-yellow" disabled={clubSaving}>
+                                        {clubSaving ? <Loader size={16} className="animate-spin" /> : (editingClubId ? 'Save Club' : 'Create Club')}
                                     </button>
                                 </div>
                             </form>

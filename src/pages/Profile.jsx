@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader, LogOut, Search } from 'lucide-react';
+import { Building2, ChevronDown, ChevronUp, Loader, LogOut, Mail, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import tinkeringLogo from '../assets/tinkering_logo.png';
@@ -26,6 +26,7 @@ const ProfilePage = () => {
     const [saveMessage, setSaveMessage] = useState('');
     const [error, setError] = useState('');
     const [clubSearch, setClubSearch] = useState('');
+    const [expandedClubId, setExpandedClubId] = useState(null);
 
     useEffect(() => {
         let active = true;
@@ -188,19 +189,56 @@ const ProfilePage = () => {
                                     .map((club) => {
                                         const isHidden = preferences.not_preferred_clubs.includes(Number(club.id));
                                         const isChecked = !isHidden;
+                                        const isExpanded = expandedClubId === club.id;
+
                                         return (
-                                            <div
-                                                key={club.id}
-                                                className={`pref-ui-row ${isHidden ? 'strikethrough' : ''}`}
-                                                onClick={() => toggleClubVisibility(Number(club.id))}
-                                            >
-                                                <span className="pref-club-name">{club.name}</span>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isChecked}
-                                                    readOnly
-                                                    className="pref-checkbox"
-                                                />
+                                            <div key={club.id} className="pref-club-card-container">
+                                                <div 
+                                                    className={`pref-club-row ${isHidden ? 'is-hidden' : ''}`}
+                                                    onClick={() => setExpandedClubId(isExpanded ? null : club.id)}
+                                                >
+                                                    <div className="pref-club-main">
+                                                        <div className="pref-club-avatar">
+                                                            {club.logo_url ? (
+                                                                <img src={club.logo_url} alt="" />
+                                                            ) : (
+                                                                <div className="pref-club-avatar-fallback">
+                                                                    <Building2 size={16} />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <span className="pref-club-name">{club.name}</span>
+                                                    </div>
+                                                    
+                                                    <div className="pref-club-actions">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isChecked}
+                                                            onChange={(e) => {
+                                                                e.stopPropagation();
+                                                                toggleClubVisibility(Number(club.id));
+                                                            }}
+                                                            className="pref-checkbox"
+                                                        />
+                                                        <div className="pref-expand-icon">
+                                                            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {isExpanded && (
+                                                    <div className="pref-club-details animate-fade-in">
+                                                        {club.description ? (
+                                                            <p className="pref-club-desc">{club.description}</p>
+                                                        ) : (
+                                                            <p className="pref-club-desc-empty">No description available.</p>
+                                                        )}
+                                                        <a href={`mailto:${club.email}`} className="pref-club-email-link">
+                                                            <Mail size={14} />
+                                                            <span>{club.email}</span>
+                                                        </a>
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })
