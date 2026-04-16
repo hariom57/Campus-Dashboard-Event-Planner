@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Bell, Filter, Clock, MapPin, Users, ChevronRight, ChevronLeft, Calendar as CalendarIcon, List as ListIcon } from 'lucide-react';
+import { Clock, MapPin, ChevronRight, ChevronLeft, Calendar as CalendarIcon, List as ListIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import eventService from '../services/events';
@@ -231,31 +231,37 @@ const CalendarPage = () => {
             <div className="page-header-bar">
                 <h1>Calendar</h1>
                 <div className="page-header-actions">
-                    <button
-                        className={`header-icon-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                        onClick={() => setViewMode(viewMode === 'strip' ? 'grid' : 'strip')}
-                        aria-label="Toggle View"
-                    >
-                        {viewMode === 'strip' ? <CalendarIcon size={18} /> : <ListIcon size={18} />}
-                    </button>
-                    <button className="header-icon-btn" aria-label="Search"><Search size={18} /></button>
-                    <button className="header-icon-btn" onClick={() => navigate('/profile')} aria-label="Alerts"><Bell size={18} /></button>
+                    <div className="calendar-view-toggle" role="group" aria-label="Choose calendar view">
+                        <button
+                            className={`calendar-view-toggle-btn ${viewMode === 'strip' ? 'active' : ''}`}
+                            onClick={() => setViewMode('strip')}
+                            aria-label="Roster View"
+                            aria-pressed={viewMode === 'strip'}
+                        >
+                            <ListIcon size={16} />
+                            <span>Roster View</span>
+                        </button>
+                        <button
+                            className={`calendar-view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                            onClick={() => setViewMode('grid')}
+                            aria-label="Grid View"
+                            aria-pressed={viewMode === 'grid'}
+                        >
+                            <CalendarIcon size={16} />
+                            <span>Grid View</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {/* Month Header / Nav */}
             <div className="cal-view-header">
-                <div className="cal-month-label">
-                    {viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                </div>
-                <div className="cal-month-nav">
-                    <button onClick={() => changeMonth(-1)}><ChevronLeft size={20} /></button>
-                    <button className="cal-today-btn" onClick={() => {
-                        const now = new Date();
-                        setViewDate(now);
-                        setSelectedDate(now);
-                    }}>Today</button>
-                    <button onClick={() => changeMonth(1)}><ChevronRight size={20} /></button>
+                <div className="cal-month-switcher" role="group" aria-label="Month navigator">
+                    <button aria-label="Previous month" onClick={() => changeMonth(-1)}><ChevronLeft size={20} /></button>
+                    <div className="cal-month-label">
+                        {viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </div>
+                    <button aria-label="Next month" onClick={() => changeMonth(1)}><ChevronRight size={20} /></button>
                 </div>
             </div>
 

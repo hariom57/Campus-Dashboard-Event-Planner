@@ -36,27 +36,33 @@
 .cal-view-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 20px 2px;
+    justify-content: center;
+    padding: 12px 16px 2px;
 }
 
 .cal-month-label {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     font-weight: 800;
     color: var(--brand-black);
-    padding: 0; /* Reset since it's in a flex row now */
+    padding: 0;
     letter-spacing: -0.02em;
+    min-width: 150px;
+    text-align: center;
 }
 
-.cal-month-nav {
+.cal-month-switcher {
     display: flex;
     align-items: center;
-    gap: 8px;
-}
-
-.cal-month-nav button {
+    gap: 4px;
     background: white;
     border: 1px solid var(--grey-200);
+    border-radius: 12px;
+    padding: 4px 6px;
+}
+
+.cal-month-switcher button {
+    background: transparent;
+    border: none;
     border-radius: 8px;
     padding: 4px;
     display: flex;
@@ -64,17 +70,19 @@
     justify-content: center;
     cursor: pointer;
     color: var(--grey-600);
+    transition: background 0.2s ease, color 0.2s ease;
 }
 
-.cal-today-btn {
-    font-size: 0.75rem;
-    font-weight: 800;
-    padding: 6px 12px !important;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--brand-purple) !important;
-    border-color: var(--brand-purple-pale) !important;
-    background: var(--brand-purple-pale) !important;
+.cal-month-switcher button:hover {
+    background: var(--grey-50);
+    color: var(--brand-black);
+}
+
+@media (max-width: 420px) {
+    .cal-month-label {
+        min-width: 132px;
+        font-size: 0.96rem;
+    }
 }
 
 /* Monthly Grid */
@@ -218,9 +226,50 @@
     line-height: 4px;
 }
 
-.header-icon-btn.active {
+.calendar-view-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: white;
+    border: 1px solid var(--grey-200);
+    border-radius: 12px;
+    padding: 4px;
+}
+
+.calendar-view-toggle-btn {
+    border: none;
+    background: transparent;
+    color: var(--grey-500);
+    border-radius: 9px;
+    padding: 8px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.calendar-view-toggle-btn:hover {
+    background: var(--grey-50);
+    color: var(--brand-black);
+}
+
+.calendar-view-toggle-btn.active {
     background: var(--brand-purple-pale);
     color: var(--brand-purple);
+}
+
+@media (max-width: 420px) {
+    .calendar-view-toggle-btn {
+        padding: 8px;
+    }
+
+    .calendar-view-toggle-btn span {
+        display: none;
+    }
 }
 
 /* Week Strip */
