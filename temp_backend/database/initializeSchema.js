@@ -98,6 +98,19 @@ const initializeSchema = async () => {
             ALTER TABLE event ADD COLUMN IF NOT EXISTS is_all_day BOOLEAN DEFAULT FALSE;
         `).catch(err => console.error('Column existence check failed:', err.message));
 
+        // Ensure user_todo has all the new columns for details and linked events
+        sequelize.query(`
+            ALTER TABLE user_todo 
+            ADD COLUMN IF NOT EXISTS notes TEXT,
+            ADD COLUMN IF NOT EXISTS due_date DATE,
+            ADD COLUMN IF NOT EXISTS due_time VARCHAR(5),
+            ADD COLUMN IF NOT EXISTS linked_event_id BIGINT,
+            ADD COLUMN IF NOT EXISTS linked_event_name TEXT,
+            ADD COLUMN IF NOT EXISTS linked_event_club TEXT,
+            ADD COLUMN IF NOT EXISTS linked_event_date TEXT;
+        `).catch(err => console.error('Todo Column existence check failed:', err.message));
+
+
         // Normalize legacy timestamp columns to timestamptz so event times are timezone-safe.
         await sequelize.query(`
             DO $$

@@ -6,13 +6,13 @@ const todoService = {
         return response.data?.todos || [];
     },
 
-    create: async (text) => {
-        const response = await api.post('/todos', { text });
+    create: async (data) => {
+        const response = await api.post('/todos', data);
         return response.data?.todo;
     },
 
-    toggle: async (id, completed) => {
-        const response = await api.patch(`/todos/${id}`, { completed });
+    update: async (id, data) => {
+        const response = await api.patch(`/todos/${id}`, data);
         return response.data?.todo;
     },
 

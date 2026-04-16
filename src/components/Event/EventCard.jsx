@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, MapPin, CalendarDays, Bell, BellRing, Share2, Pointer } from 'lucide-react';
+import { Clock, MapPin, CalendarDays, Bell, BellRing, Share2, Pointer, ClipboardList } from 'lucide-react';
 import { shareEvent, shareEventOnWhatsApp } from '../../services/shareEvent';
+import todoService from '../../services/todo';
 import WhatsAppIcon from '../Icons/WhatsAppIcon';
 import './EventCard.css';
 
@@ -132,6 +133,26 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
         shareEventOnWhatsApp(event);
     };
 
+    const handleAddToTodo = async (evt) => {
+        evt.stopPropagation();
+        try {
+            await todoService.create({
+                text: `Attend ${event.name || 'Event'}`,
+                notes: event.description ? event.description.substring(0, 200) + (event.description.length > 200 ? '...' : '') : null,
+                due_date: event.tentative_start_time ? new Date(event.tentative_start_time).toISOString().split('T')[0] : null,
+                due_time: event.tentative_start_time ? new Date(event.tentative_start_time).toTimeString().substring(0, 5) : null,
+                linked_event_id: isAcademic ? null : numericId, // Only link if it's a real event with an ID
+                linked_event_name: event.name,
+                linked_event_club: event.club_name || primaryCategory,
+                linked_event_date: event.tentative_start_time
+            });
+            window.alert('Task added to your Assistant Todo list!');
+        } catch (err) {
+            console.error('Failed to add to Todo', err);
+            window.alert('Failed to add to Todo list. Please try again.');
+        }
+    };
+
     return (
         <div
             className={`event-card-new`}
@@ -139,16 +160,29 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
             style={{ cursor: 'pointer' }}
         >
             {isAcademic && (
-                <button
-                    type="button"
-                    className={`event-reminder-btn event-reminder-btn--academic ${isReminderEnabled ? 'enabled' : ''}`}
-                    aria-label={isReminderEnabled ? 'Disable reminders' : 'Enable reminders'}
-                    onClick={handleReminderClick}
-                    title={canSetReminder ? 'Notify me 30 min and 5 min before' : 'Reminders unavailable for all-day events'}
-                    disabled={!canSetReminder}
-                >
-                    {isReminderEnabled ? <BellRing size={14} /> : <Bell size={14} />}
-                </button>
+                <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '8px', zIndex: 3 }}>
+                    <button
+                        type="button"
+                        className={`event-reminder-btn event-reminder-btn--academic`}
+                        aria-label="Add to Todo"
+                        onClick={handleAddToTodo}
+                        title="Add to Assistant Task List"
+                        style={{ position: 'static' }}
+                    >
+                        <ClipboardList size={14} />
+                    </button>
+                    <button
+                        type="button"
+                        className={`event-reminder-btn event-reminder-btn--academic ${isReminderEnabled ? 'enabled' : ''}`}
+                        aria-label={isReminderEnabled ? 'Disable reminders' : 'Enable reminders'}
+                        onClick={handleReminderClick}
+                        title={canSetReminder ? 'Notify me 30 min and 5 min before' : 'Reminders unavailable for all-day events'}
+                        style={{ position: 'static' }}
+                        disabled={!canSetReminder}
+                    >
+                        {isReminderEnabled ? <BellRing size={14} /> : <Bell size={14} />}
+                    </button>
+                </div>
             )}
 
             {/* Banner - Only for non-academic events */}
@@ -157,16 +191,29 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
                     <span className="event-category-badge" style={{ background: categoryColor }}>
                         {primaryCategory}
                     </span>
-                    <button
-                        type="button"
-                        className={`event-reminder-btn ${isReminderEnabled ? 'enabled' : ''}`}
-                        aria-label={isReminderEnabled ? 'Disable reminders' : 'Enable reminders'}
-                        onClick={handleReminderClick}
-                        title={canSetReminder ? 'Notify me 30 min and 5 min before' : 'Reminders unavailable for all-day events'}
-                        disabled={!canSetReminder}
-                    >
-                        {isReminderEnabled ? <BellRing size={15} /> : <Bell size={15} />}
-                    </button>
+                    <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '8px' }}>
+                        <button
+                            type="button"
+                            className={`event-reminder-btn`}
+                            aria-label="Add to Todo"
+                            onClick={handleAddToTodo}
+                            title="Add to Assistant Task List"
+                            style={{ position: 'static' }}
+                        >
+                            <ClipboardList size={15} />
+                        </button>
+                        <button
+                            type="button"
+                            className={`event-reminder-btn ${isReminderEnabled ? 'enabled' : ''}`}
+                            aria-label={isReminderEnabled ? 'Disable reminders' : 'Enable reminders'}
+                            onClick={handleReminderClick}
+                            title={canSetReminder ? 'Notify me 30 min and 5 min before' : 'Reminders unavailable for all-day events'}
+                            style={{ position: 'static' }}
+                            disabled={!canSetReminder}
+                        >
+                            {isReminderEnabled ? <BellRing size={15} /> : <Bell size={15} />}
+                        </button>
+                    </div>
                 </div>
             )}
 

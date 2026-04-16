@@ -96,23 +96,39 @@
     gap: 10px;
 }
 
-.todo-item {
+.todo-item-wrapper {
     display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 16px;
+    flex-direction: column;
     border-radius: 18px;
     transition: all 0.2s ease;
     border: 1px solid var(--grey-100);
+    overflow: hidden;
+    margin-bottom: 8px;
+    background: white;
 }
 
-.todo-item:hover {
+.todo-item-wrapper:hover {
     border-color: var(--grey-200);
     transform: translateY(-1px);
 }
 
-.todo-item.completed {
+.todo-item-wrapper.expanded {
+    border-color: var(--brand-purple);
+    box-shadow: 0 4px 16px rgba(113, 51, 100, 0.08);
+    transform: none;
+    margin: 12px 0;
+}
+
+.todo-item-wrapper.completed {
     background: var(--grey-50);
+}
+
+.todo-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+    cursor: pointer;
 }
 
 .todo-check-btn {
@@ -125,9 +141,10 @@
     justify-content: center;
     color: var(--grey-300);
     transition: color 0.15s ease;
+    margin-top: 2px;
 }
 
-.todo-item.completed .todo-check-btn {
+.todo-item-wrapper.completed .todo-check-btn {
     color: var(--brand-purple);
 }
 
@@ -135,17 +152,57 @@
     color: var(--brand-purple);
 }
 
-.todo-text {
+.todo-text-content {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.todo-text {
     font-size: 0.95rem;
     font-weight: 500;
     color: var(--brand-black);
     line-height: 1.4;
 }
 
-.todo-item.completed .todo-text {
+.todo-item-wrapper.completed .todo-text {
     text-decoration: line-through;
     color: var(--grey-400);
+}
+
+.todo-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.todo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--grey-500);
+    background: var(--grey-100);
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.todo-badge.overdue {
+    color: #c62828;
+    background: #ffebee;
+}
+
+.todo-badge.linked-event {
+    color: var(--brand-purple);
+    background: var(--brand-purple-pale);
+    cursor: pointer;
+}
+
+.todo-badge.linked-event:hover {
+    background: rgba(113, 51, 100, 0.15);
 }
 
 .todo-delete-btn {
@@ -162,6 +219,117 @@
     color: var(--red);
     background: #fef2f2;
 }
+
+.todo-editor {
+    padding: 0 16px 16px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-top: 1px solid var(--grey-100);
+    padding-top: 12px;
+    margin-top: -4px;
+}
+
+.todo-editor-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.todo-editor-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--grey-500);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.todo-editor-row {
+    display: flex;
+    gap: 12px;
+}
+
+.todo-editor-input {
+    border: 1px solid var(--grey-200);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.88rem;
+    font-family: inherit;
+    color: var(--brand-black);
+    transition: border-color 0.2s ease;
+    background: white;
+}
+
+.todo-editor-input:focus {
+    outline: none;
+    border-color: var(--brand-purple);
+}
+
+.todo-editor-textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.todo-editor-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+.todo-done-btn {
+    background: var(--brand-purple);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.todo-done-btn:hover {
+    background: var(--brand-purple-dark);
+}
+
+.linked-event-card {
+    border: 1px solid var(--grey-200);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8rem;
+    cursor: pointer;
+    background: var(--grey-50);
+}
+
+.linked-event-card strong {
+    color: var(--brand-black);
+}
+
+.linked-event-card span {
+    color: var(--grey-500);
+}
+
+.todo-completed-section {
+    margin-top: 24px;
+}
+
+.todo-completed-header {
+    border-bottom: 1px solid var(--grey-200);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+}
+
+.todo-completed-header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--grey-500);
+    font-weight: 600;
+}
+
 
 .todo-empty {
     padding: 48px 24px;

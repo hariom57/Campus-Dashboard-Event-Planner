@@ -23,7 +23,7 @@ router.get('/', userData, async (req, res) => {
 router.post('/', userData, async (req, res) => {
     try {
         const userId = req.user.user_id;
-        const { text } = req.body;
+        const { text, notes, due_date, due_time, linked_event_id, linked_event_name, linked_event_club, linked_event_date } = req.body;
 
         if (!text || !String(text).trim()) {
             return res.status(400).json({ error: 'Bad request', message: 'Todo text is required' });
@@ -32,6 +32,13 @@ router.post('/', userData, async (req, res) => {
         const todo = await UserTodo.create({
             user_id: userId,
             text: String(text).trim(),
+            notes: notes || null,
+            due_date: due_date || null,
+            due_time: due_time || null,
+            linked_event_id: linked_event_id || null,
+            linked_event_name: linked_event_name || null,
+            linked_event_club: linked_event_club || null,
+            linked_event_date: linked_event_date || null,
             completed: false,
         });
 
@@ -42,12 +49,12 @@ router.post('/', userData, async (req, res) => {
     }
 });
 
-// PATCH /todos/:id — toggle completed or update text
+// PATCH /todos/:id — update any todo field
 router.patch('/:id', userData, async (req, res) => {
     try {
         const userId = req.user.user_id;
         const todoId = req.params.id;
-        const { completed, text } = req.body;
+        const { completed, text, notes, due_date, due_time } = req.body;
 
         const todo = await UserTodo.findOne({ where: { id: todoId, user_id: userId } });
         if (!todo) {
@@ -57,6 +64,9 @@ router.patch('/:id', userData, async (req, res) => {
         const updateData = {};
         if (completed !== undefined) updateData.completed = completed;
         if (text !== undefined && String(text).trim()) updateData.text = String(text).trim();
+        if (notes !== undefined) updateData.notes = notes;
+        if (due_date !== undefined) updateData.due_date = due_date;
+        if (due_time !== undefined) updateData.due_time = due_time;
 
         await todo.update(updateData);
         res.json({ todo: todo.toJSON() });
