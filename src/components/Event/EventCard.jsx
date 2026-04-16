@@ -139,11 +139,19 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
     const handleAddToTodo = async (evt) => {
         evt.stopPropagation();
         try {
+            let localDate = null;
+            let localTime = null;
+            if (event.tentative_start_time) {
+                const d = new Date(event.tentative_start_time);
+                localDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                localTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            }
+
             await todoService.create({
                 text: `Attend ${event.name || 'Event'}`,
                 notes: event.description ? event.description.substring(0, 200) + (event.description.length > 200 ? '...' : '') : null,
-                due_date: event.tentative_start_time ? new Date(event.tentative_start_time).toISOString().split('T')[0] : null,
-                due_time: event.tentative_start_time ? new Date(event.tentative_start_time).toTimeString().substring(0, 5) : null,
+                due_date: localDate,
+                due_time: localTime,
                 linked_event_id: isAcademic ? null : numericId, // Only link if it's a real event with an ID
                 linked_event_name: event.name,
                 linked_event_club: event.club_name || primaryCategory,

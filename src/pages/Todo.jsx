@@ -179,7 +179,7 @@ const Todo = () => {
                         checked={showInFeed} 
                         onChange={(e) => setShowInFeed(e.target.checked)}
                     />
-                    <span className="feed-toggle-text">Show my active tasks in Home Feed</span>
+                    <span className="feed-toggle-text">Show my active tasks in Home Feed and Calendar</span>
                     <span className="feed-toggle-badge">New</span>
                 </label>
             </div>

@@ -3,9 +3,11 @@ import { Search, Bell, Filter, Clock, MapPin, Users, ChevronRight, ChevronLeft, 
 import { useNavigate } from 'react-router-dom';
 import eventService from '../services/events';
 import academicCalendarService from '../services/academicCalendar';
+import todoService from '../services/todo';
+import { useAuth } from '../context/AuthContext';
 import './Calendar.css';
 
-const CATEGORY_FILTERS = ['All', 'Academic', 'Exam', 'Holiday', 'Timetable Reschedule', 'Technical', 'Cultural', 'Sports', 'Fest'];
+const CATEGORY_FILTERS = ['All', 'Academic', 'Exam', 'Holiday', 'Timetable Reschedule', 'Technical', 'Cultural', 'Sports', 'Fest', 'Personal/Todo'];
 
 const CATEGORY_COLORS = {
     Technical: '#713364',
@@ -16,6 +18,7 @@ const CATEGORY_COLORS = {
     Holiday: '#2e7d32', // Green for holidays
     Exam: '#c62828',    // Red for exams
     'Timetable Reschedule': '#d84315', // Orange/Deep for rescheduled days
+    'Personal/Todo': '#d4af37', // Gold for personal tasks
     General: '#607d8b',
 };
 
@@ -70,6 +73,7 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const CalendarPage = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -103,7 +107,36 @@ const CalendarPage = () => {
                     club_name: 'IIT Roorkee',
                 }));
 
-                setEvents([...dynamicEvents, ...normalizedAcademic]);
+                // Fetch Todos if preference is enabled
+                let todoData = [];
+                if (localStorage.getItem('iitr_show_feed_todos') === 'true') {
+                    try {
+                        const todos = await todoService.getAll();
+                        const activeTodos = todos.filter(t => !t.completed);
+                        
+                        todoData = activeTodos.map(todo => {
+                            const todayStr = new Date().toISOString().split('T')[0];
+                            const dateStr = todo.due_date || todayStr;
+                            const timeStr = todo.due_time || '00:00';
+                            
+                            return {
+                                id: `todo-${todo.id}`,
+                                name: todo.text,
+                                tentative_start_time: `${dateStr}T${timeStr}:00`,
+                                description: todo.notes,
+                                categories: 'Personal/Todo',
+                                location_name: todo.linked_event_name || 'Personal Task',
+                                isTodoEvent: true,
+                                isAllDay: !todo.due_time,
+                                club_name: user?.full_name || 'Personal',
+                            };
+                        });
+                    } catch(err) {
+                        console.error('Failed to load todo events for calendar', err);
+                    }
+                }
+
+                setEvents([...dynamicEvents, ...normalizedAcademic, ...todoData]);
             } catch (err) {
                 console.error("Failed to load events", err);
             } finally {
@@ -111,8 +144,10 @@ const CalendarPage = () => {
             }
         };
 
-        fetchAll();
-    }, []);
+        if (user !== undefined) {
+            fetchAll();
+        }
+    }, [user]);
 
     // Events for the selected date (using local comparison)
     const selectedDateStr = getLocalDateString(selectedDate);
@@ -332,7 +367,7 @@ const CalendarPage = () => {
                         const primaryCat = ev.categories ? ev.categories.split(',')[0].trim() : 'General';
                         const catColor = CATEGORY_COLORS[primaryCat] || '#607d8b';
                         return (
-                            <div key={ev.id} className="cal-timeline-item" onClick={() => navigate(`/event/${ev.id}`)}>
+                            <div key={ev.id} className="cal-timeline-item" onClick={() => ev.isTodoEvent ? navigate(`/todo`) : navigate(`/event/${ev.id}`)}>
                                 <div className="cal-time-col">
                                     <span className="cal-time">
                                         {ev.is_all_day || ev.isAllDay ? 'ALL DAY' : formatTime(ev.tentative_start_time)}

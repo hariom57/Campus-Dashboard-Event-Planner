@@ -133,7 +133,7 @@ const Home = () => {
                         name: todo.text,
                         tentative_start_time,
                         description: todo.notes,
-                        categories: ['Personal/Todo'],
+                        categories: 'Personal/Todo',
                         location_name: todo.linked_event_name || 'Personal Task',
                         isTodoEvent: true,
                         isAllDay: !todo.due_time,
