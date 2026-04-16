@@ -13,6 +13,13 @@ const Todo = () => {
     const [error, setError] = useState('');
     const [expandedTodoId, setExpandedTodoId] = useState(null);
     const [editData, setEditData] = useState({});
+    const [showInFeed, setShowInFeed] = useState(() => localStorage.getItem('iitr_show_feed_todos') === 'true');
+    const [isCreating, setIsCreating] = useState(false);
+    const [createData, setCreateData] = useState({ text: '', notes: '', due_date: '', due_time: '' });
+
+    useEffect(() => {
+        localStorage.setItem('iitr_show_feed_todos', showInFeed);
+    }, [showInFeed]);
 
     const loadTodos = useCallback(async () => {
         try {
@@ -33,14 +40,20 @@ const Todo = () => {
     }, [loadTodos]);
 
     const handleAddTodo = async (e) => {
-        e.preventDefault();
-        if (!inputValue.trim() || saving) return;
+        if (e) e.preventDefault();
+        if (!createData.text.trim() || saving) return;
 
         setSaving(true);
         try {
-            const newTodo = await todoService.create({ text: inputValue.trim() });
+            const newTodo = await todoService.create({
+                text: createData.text.trim(),
+                notes: createData.notes || null,
+                due_date: createData.due_date || null,
+                due_time: createData.due_time || null,
+            });
             setTodos(prev => [newTodo, ...prev]);
-            setInputValue('');
+            setCreateData({ text: '', notes: '', due_date: '', due_time: '' });
+            setIsCreating(false);
         } catch (err) {
             console.error('Failed to create todo', err);
             setError('Could not save task. Please try again.');
@@ -159,21 +172,91 @@ const Todo = () => {
                 </div>
             </div>
 
-            <div className="todo-content container">
-                <form className="todo-input-card card" onSubmit={handleAddTodo}>
-                    <input
-                        type="text"
-                        placeholder="What's on your mind? (e.g. Lab report due tomorrow)"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        disabled={saving}
+            <div className="todo-feed-toggle container">
+                <label className="feed-toggle-label">
+                    <input 
+                        type="checkbox" 
+                        checked={showInFeed} 
+                        onChange={(e) => setShowInFeed(e.target.checked)}
                     />
-                    <button type="submit" className="todo-add-btn" title="Add Task" disabled={!inputValue.trim() || saving}>
-                        {saving ? <Loader size={18} className="spin" /> : <Plus size={20} />}
-                    </button>
-                </form>
+                    <span className="feed-toggle-text">Show my active tasks in Home Feed</span>
+                    <span className="feed-toggle-badge">New</span>
+                </label>
+            </div>
 
-                {error && <p className="todo-error-msg">{error}</p>}
+            <div className="todo-content container">
+                {isCreating ? (
+                    <div className="todo-item-wrapper expanded create-mode card" style={{ padding: '0' }}>
+                        <div className="todo-editor" style={{ borderTop: 'none', paddingLeft: '16px', paddingTop: '16px' }}>
+                            <div className="todo-editor-group">
+                                <label>Task</label>
+                                <input 
+                                    type="text" 
+                                    className="todo-editor-input" 
+                                    value={createData.text} 
+                                    onChange={e => setCreateData({...createData, text: e.target.value})}
+                                    placeholder="Task name"
+                                    autoFocus
+                                />
+                            </div>
+                            
+                            <div className="todo-editor-group">
+                                <label><AlignLeft size={14} /> Details</label>
+                                <textarea 
+                                    className="todo-editor-input todo-editor-textarea" 
+                                    value={createData.notes} 
+                                    onChange={e => setCreateData({...createData, notes: e.target.value})}
+                                    placeholder="Add details..."
+                                    rows="2"
+                                />
+                            </div>
+                            
+                            <div className="todo-editor-row">
+                                <div className="todo-editor-group">
+                                    <label><Calendar size={14} /> Date</label>
+                                    <input 
+                                        type="date" 
+                                        className="todo-editor-input" 
+                                        value={createData.due_date} 
+                                        onChange={e => setCreateData({...createData, due_date: e.target.value})}
+                                    />
+                                </div>
+                                <div className="todo-editor-group">
+                                    <label>Time</label>
+                                    <input 
+                                        type="time" 
+                                        className="todo-editor-input" 
+                                        value={createData.due_time} 
+                                        onChange={e => setCreateData({...createData, due_time: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+
+                            {error && <p className="todo-error-msg">{error}</p>}
+
+                            <div className="todo-editor-actions" style={{ marginTop: '12px', gap: '8px', display: 'flex' }}>
+                                <button className="todo-cancel-btn" onClick={() => setIsCreating(false)}>
+                                    Cancel
+                                </button>
+                                <button className="todo-done-btn" onClick={handleAddTodo} disabled={!createData.text.trim() || saving}>
+                                    {saving ? <Loader size={18} className="spin" /> : 'Save Task'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="todo-input-card card" onClick={() => setIsCreating(true)} style={{ cursor: 'text' }}>
+                        <input
+                            type="text"
+                            placeholder="What's on your mind? (Click to add a custom task)"
+                            value={createData.text}
+                            onChange={(e) => setCreateData({...createData, text: e.target.value})}
+                            style={{ pointerEvents: 'none' }}
+                            readOnly
+                        />
+                        <button className="todo-add-btn" title="Add Task"><Plus size={20} /></button>
+                    </div>
+                )}
 
                 <div className="todo-list-section">
                     {loading ? (

@@ -90,6 +90,8 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
     const navigate = useNavigate();
 
     const isAcademic = event.isAcademicCalendar;
+    const isTodo = event.isTodoEvent;
+    const isSlimFormat = isAcademic || isTodo;
 
     const numericId = typeof event.id === 'string' ? parseInt(event.id.replace(/\D/g, '')) || event.id.length : event.id;
     const fallbackGradient = GRADIENTS[(numericId || 0) % GRADIENTS.length];
@@ -155,22 +157,25 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
 
     return (
         <div
-            className={`event-card-new`}
-            onClick={() => navigate(`/event/${event.id}`)}
+                className={`event-card-new ${isTodo ? 'todo-event-card' : ''}`}
+                onClick={() => isTodo ? navigate('/todo') : navigate(`/event/${event.id}`)}
             style={{ cursor: 'pointer' }}
         >
-            {isAcademic && (
+            {/* Slim Header actions for Academic & Todo */}
+            {isSlimFormat && (
                 <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '8px', zIndex: 3 }}>
-                    <button
-                        type="button"
-                        className={`event-reminder-btn event-reminder-btn--academic`}
-                        aria-label="Add to Todo"
-                        onClick={handleAddToTodo}
-                        title="Add to Assistant Task List"
-                        style={{ position: 'static' }}
-                    >
-                        <ClipboardList size={14} />
-                    </button>
+                    {!isTodo && (
+                        <button
+                            type="button"
+                            className={`event-reminder-btn event-reminder-btn--academic`}
+                            aria-label="Add to Todo"
+                            onClick={handleAddToTodo}
+                            title="Add to Assistant Task List"
+                            style={{ position: 'static' }}
+                        >
+                            <ClipboardList size={14} />
+                        </button>
+                    )}
                     <button
                         type="button"
                         className={`event-reminder-btn event-reminder-btn--academic ${isReminderEnabled ? 'enabled' : ''}`}
@@ -185,8 +190,8 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
                 </div>
             )}
 
-            {/* Banner - Only for non-academic events */}
-            {!isAcademic && (
+            {/* Banner - Only for non-academic/non-todo events */}
+            {!isSlimFormat && (
                 <div className="event-card-banner" style={bannerStyle}>
                     <span className="event-category-badge" style={{ background: categoryColor }}>
                         {primaryCategory}
@@ -219,8 +224,8 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
 
             {/* Body */}
             <div className="event-card-body">
-                {/* Slim header for academic cards to show category and color code */}
-                {isAcademic && (
+                {/* Slim header for academic/todo cards to show category and color code */}
+                {isSlimFormat && (
                     <div className="academic-card-header">
                         <span className="academic-badge" style={{ background: `${categoryColor}15`, color: categoryColor, borderColor: categoryColor }}>
                             {primaryCategory}
@@ -230,7 +235,7 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
 
                 <h3 className="event-card-title">{event.name}</h3>
 
-                <div className="event-club-avatar" style={isAcademic ? { background: categoryColor, color: 'white' } : { overflow: 'hidden' }}>
+                <div className="event-club-avatar" style={isSlimFormat ? { background: categoryColor, color: 'white' } : { overflow: 'hidden' }}>
                     {event.club_logo_url || event.logo_url ? (
                         <img src={event.club_logo_url || event.logo_url} alt={event.club_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
@@ -253,7 +258,7 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
                     </span>
                 </div>
 
-                {!isAcademic && (
+                {!isSlimFormat && (
                     <div className="event-card-footer">
                         <button
                             type="button"

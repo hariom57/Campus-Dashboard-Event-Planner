@@ -310,3 +310,25 @@
 .academic-card .event-card-title {
     font-size: 0.95rem;
 }
+
+/* Todo Event Card Specifics (Shiny) */
+.todo-event-card {
+    border: 2px solid #FFD700;
+    box-shadow: 0 4px 18px rgba(255, 215, 0, 0.15);
+    background: linear-gradient(180deg, #fffcf0 0%, #ffffff 100%);
+}
+
+.todo-event-card:hover {
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.25);
+    border-color: #ffc107;
+}
+
+.todo-event-card .academic-badge {
+    background: #FFD700 !important;
+    color: #4a1d3f !important;
+}
+
+.todo-event-card .event-club-avatar {
+    background: #FFD700 !important;
+    color: #4a1d3f !important;
+}

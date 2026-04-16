@@ -4,7 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import EventCard from '../components/Event/EventCard';
 import eventService from '../services/events';
 import academicCalendarService from '../services/academicCalendar';
+
 import eventReminderService from '../services/eventReminders';
+import todoService from '../services/todo';
+
 import { useAuth } from '../context/AuthContext';
 import './Home.css';
 
@@ -31,6 +34,7 @@ const Home = () => {
     const { user, loading: authLoading, notifications, backendSlow } = useAuth();
     const [dynamicEvents, setDynamicEvents] = useState([]);
     const [academicEvents, setAcademicEvents] = useState([]);
+    const [todoEvents, setTodoEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState([]);
@@ -110,10 +114,43 @@ const Home = () => {
             }
         };
 
+        const fetchTodoEvents = async () => {
+            if (localStorage.getItem('iitr_show_feed_todos') !== 'true') {
+                return;
+            }
+            try {
+                const todos = await todoService.getAll();
+                const activeTodos = todos.filter(t => !t.completed);
+                
+                const normalizedTodos = activeTodos.map(todo => {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const dateStr = todo.due_date || todayStr;
+                    const timeStr = todo.due_time || '00:00';
+                    const tentative_start_time = `${dateStr}T${timeStr}:00`;
+                    
+                    return {
+                        id: `todo-${todo.id}`,
+                        name: todo.text,
+                        tentative_start_time,
+                        description: todo.notes,
+                        categories: ['Personal/Todo'],
+                        location_name: todo.linked_event_name || 'Personal Task',
+                        isTodoEvent: true,
+                        isAllDay: !todo.due_time,
+                        club_name: 'Assistant',
+                    };
+                });
+                setTodoEvents(normalizedTodos);
+            } catch (err) {
+                console.error('Todo feed fetch error', err);
+            }
+        };
+
         setPage(1);
         setHasMore(true);
         setInitialLoaded(false);
         fetchAcademicEvents();
+        fetchTodoEvents();
         fetchDynamicPage(1);
     }, [authLoading, user, fetchDynamicPage]);
 
@@ -145,7 +182,7 @@ const Home = () => {
     }, [hasMore, loadingMore, loading, initialLoaded]);
 
     const events = useMemo(() => {
-        const combined = [...dynamicEvents, ...academicEvents];
+        const combined = [...dynamicEvents, ...academicEvents, ...todoEvents];
         const todayStr = new Date().toISOString().split('T')[0];
 
         return combined
@@ -213,6 +250,11 @@ const Home = () => {
         || ev.name.toLowerCase().includes(searchQuery.toLowerCase())
         || (ev.club_name && ev.club_name.toLowerCase().includes(searchQuery.toLowerCase()))
         || (ev.location_name && ev.location_name.toLowerCase().includes(searchQuery.toLowerCase())); 
+
+    // Always show todo events if their category matches, they aren't bound to club preferences
+    if (ev.isTodoEvent) {
+        return matchesCategorySelection && matchesSearch;
+    }
 
     return matchesCategorySelection && !isHiddenClub && matchesSearch; 
 });
