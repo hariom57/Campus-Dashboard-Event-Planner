@@ -137,7 +137,8 @@ const Home = () => {
                         location_name: todo.linked_event_name || 'Personal Task',
                         isTodoEvent: true,
                         isAllDay: !todo.due_time,
-                        club_name: 'Assistant',
+                        club_name: user?.full_name || 'Personal',
+                        club_logo_url: user?.display_picture ? `https://channeli.in${user.display_picture}` : undefined,
                     };
                 });
                 setTodoEvents(normalizedTodos);
