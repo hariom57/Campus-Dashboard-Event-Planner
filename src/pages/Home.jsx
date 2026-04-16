@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Bell, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import useSWR from 'swr';
+import useSWRInfinite from 'swr/infinite';
 import EventCard from '../components/Event/EventCard';
 import eventService from '../services/events';
 import academicCalendarService from '../services/academicCalendar';
@@ -32,133 +34,97 @@ const extractCategoryNames = (event) => {
 const Home = () => {
     const navigate = useNavigate();
     const { user, loading: authLoading, notifications, backendSlow } = useAuth();
-    const [dynamicEvents, setDynamicEvents] = useState([]);
-    const [academicEvents, setAcademicEvents] = useState([]);
-    const [todoEvents, setTodoEvents] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
+    
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const [reminderEventIds, setReminderEventIds] = useState(() => new Set(eventReminderService.getReminderIds()));
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
-    const [initialLoaded, setInitialLoaded] = useState(false);
     const sentinelRef = useRef(null);
     const PAGE_SIZE = 10;
 
-    const fetchDynamicPage = useCallback(async (targetPage) => {
-        if (targetPage === 1) {
-            setLoading(true);
-        } else {
-            setLoadingMore(true);
+    const { data: pageData, size, setSize, isLoading: dynLoading, isValidating: dynValidating } = useSWRInfinite(
+        (pageIndex, previousPageData) => {
+            if (!user || authLoading) return null;
+            if (previousPageData && previousPageData.events && previousPageData.events.length < PAGE_SIZE) return null;
+            return `dynamic_events_page_${pageIndex + 1}`;
+        },
+        async (key) => {
+            const split = key.split('_');
+            const targetPage = parseInt(split[split.length - 1]);
+            return await eventService.getAllEventsPage(targetPage, PAGE_SIZE);
         }
+    );
 
-        try {
-            const result = await eventService.getAllEventsPage(targetPage, PAGE_SIZE);
-            const fetched = result?.events || [];
-
-            setDynamicEvents((prev) => {
-                const incoming = targetPage === 1 ? fetched : [...prev, ...fetched];
-                const seen = new Set();
-                return incoming.filter((ev) => {
+    const dynamicEvents = useMemo(() => {
+        if (!pageData) return [];
+        const combined = [];
+        const seen = new Set();
+        pageData.forEach((pageObj) => {
+            if (pageObj && pageObj.events) {
+                pageObj.events.forEach((ev) => {
                     const key = String(ev.id);
-                    if (seen.has(key)) return false;
-                    seen.add(key);
-                    return true;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        combined.push(ev);
+                    }
                 });
-            });
-
-            if (typeof result?.totalPages === 'number' && result.totalPages > 0) {
-                setHasMore(targetPage < result.totalPages);
-            } else {
-                setHasMore(fetched.length === PAGE_SIZE);
             }
+        });
+        return combined;
+    }, [pageData]);
 
-            setInitialLoaded(true);
-        } catch (err) {
-            console.error('Home feed fetch error', err);
-            if (targetPage === 1) {
-                setDynamicEvents([]);
-            }
-            setHasMore(false);
-            setInitialLoaded(true);
-        } finally {
-            setLoading(false);
-            setLoadingMore(false);
-        }
-    }, []);
+    const loading = dynLoading;
+    const loadingMore = dynLoading || (size > 0 && pageData && typeof pageData[size - 1] === "undefined");
+    const hasMore = pageData ? (pageData[pageData.length - 1]?.events?.length >= PAGE_SIZE) : true;
+    const initialLoaded = !!pageData;
 
-    useEffect(() => {
-        if (authLoading || !user) return;
+    const { data: rawAcademicEvents = [] } = useSWR(
+        (user && !authLoading) ? 'cal_academic' : null,
+        () => academicCalendarService.getAllEvents()
+    );
 
-        const fetchAcademicEvents = async () => {
-            try {
-                const academicData = await academicCalendarService.getAllEvents().catch(() => []);
-                const normalizedAcademic = academicData.map((ae) => ({
-                    id: `academic-${ae.id}`,
-                    name: ae.title,
-                    tentative_start_time: `${ae.startDate}T00:00:00`,
-                    tentative_end_time: `${ae.endDate}T23:59:59`,
-                    description: ae.description,
-                    categories: ae.category,
-                    location_name: ae.isHoliday ? 'Institute Holiday' : 'Campus-wide',
-                    isAcademicCalendar: true,
-                    isAllDay: true,
-                    club_name: 'IIT Roorkee',
-                }));
-                setAcademicEvents(normalizedAcademic);
-            } catch (err) {
-                console.error('Academic feed fetch error', err);
-                setAcademicEvents([]);
-            }
-        };
+    const { data: rawTodos = [] } = useSWR(
+        (user && !authLoading && localStorage.getItem('iitr_show_feed_todos') === 'true') ? 'cal_todos' : null,
+        () => todoService.getAll()
+    );
 
-        const fetchTodoEvents = async () => {
-            if (localStorage.getItem('iitr_show_feed_todos') !== 'true') {
-                return;
-            }
-            try {
-                const todos = await todoService.getAll();
-                const activeTodos = todos.filter(t => !t.completed);
-                
-                const normalizedTodos = activeTodos.map(todo => {
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    const dateStr = todo.due_date || todayStr;
-                    const timeStr = todo.due_time || '00:00';
-                    const tentative_start_time = `${dateStr}T${timeStr}:00`;
-                    
-                    return {
-                        id: `todo-${todo.id}`,
-                        name: todo.text,
-                        tentative_start_time,
-                        description: todo.notes,
-                        categories: 'Personal/Todo',
-                        location_name: todo.linked_event_name || 'Personal Task',
-                        isTodoEvent: true,
-                        isAllDay: !todo.due_time,
-                        club_name: user?.full_name || 'Personal',
-                        club_logo_url: user?.display_picture ? `https://channeli.in${user.display_picture}` : undefined,
-                    };
-                });
-                setTodoEvents(normalizedTodos);
-            } catch (err) {
-                console.error('Todo feed fetch error', err);
-            }
-        };
+    const academicEvents = useMemo(() => {
+        return rawAcademicEvents.map((ae) => ({
+            id: `academic-${ae.id}`,
+            name: ae.title,
+            tentative_start_time: `${ae.startDate}T00:00:00`,
+            tentative_end_time: `${ae.endDate}T23:59:59`,
+            description: ae.description,
+            categories: ae.category,
+            location_name: ae.isHoliday ? 'Institute Holiday' : 'Campus-wide',
+            isAcademicCalendar: true,
+            isAllDay: true,
+            club_name: 'IIT Roorkee',
+        }));
+    }, [rawAcademicEvents]);
 
-        setPage(1);
-        setHasMore(true);
-        setInitialLoaded(false);
-        fetchAcademicEvents();
-        fetchTodoEvents();
-        fetchDynamicPage(1);
-    }, [authLoading, user, fetchDynamicPage]);
-
-    useEffect(() => {
-        if (!initialLoaded || page === 1 || !hasMore || loadingMore) return;
-        fetchDynamicPage(page);
-    }, [page, hasMore, loadingMore, initialLoaded, fetchDynamicPage]);
+    const todoEvents = useMemo(() => {
+        const activeTodos = rawTodos.filter(t => !t.completed);
+        return activeTodos.map(todo => {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const dateStr = todo.due_date || todayStr;
+            const timeStr = todo.due_time || '00:00';
+            const tentative_start_time = `${dateStr}T${timeStr}:00`;
+            
+            return {
+                id: `todo-${todo.id}`,
+                name: todo.text,
+                tentative_start_time,
+                description: todo.notes,
+                categories: 'Personal/Todo',
+                location_name: todo.linked_event_name || 'Personal Task',
+                isTodoEvent: true,
+                isAllDay: !todo.due_time,
+                club_name: user?.full_name || 'Personal',
+                club_logo_url: user?.display_picture ? `https://channeli.in${user.display_picture}` : undefined,
+            };
+        });
+    }, [rawTodos, user]);
 
     useEffect(() => {
         eventReminderService.scheduleStoredReminders();
@@ -172,7 +138,7 @@ const Home = () => {
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0]?.isIntersecting && hasMore && !loadingMore && !loading) {
-                    setPage((prev) => prev + 1);
+                    setSize(size + 1);
                 }
             },
             { root: null, rootMargin: '300px 0px', threshold: 0 }

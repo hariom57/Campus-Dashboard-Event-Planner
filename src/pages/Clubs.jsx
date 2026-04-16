@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Building2, Edit, Loader, Mail, Plus, Search, ShieldAlert, Save, Trash2, Users, X } from 'lucide-react';
+import useSWR from 'swr';
 import { useAuth } from '../context/AuthContext';
 import clubsService from '../services/clubs';
 import './Clubs.css';
@@ -14,8 +15,6 @@ const emptyForm = {
 
 const ClubsPage = () => {
     const { user, loading: authLoading } = useAuth();
-    const [clubs, setClubs] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [showForm, setShowForm] = useState(false);
     const [editingClubId, setEditingClubId] = useState(null);
@@ -30,24 +29,13 @@ const ClubsPage = () => {
         return club && managedClubIds.includes(Number(club.id));
     };
 
-    useEffect(() => {
-        const fetchClubs = async () => {
-            if (authLoading || !user) return;
+    const { data: clubsData, isLoading, mutate } = useSWR(
+        (!authLoading && user) ? 'all_clubs' : null,
+        () => clubsService.getAllClubs()
+    );
 
-            setLoading(true);
-            try {
-                const data = await clubsService.getAllClubs();
-                setClubs(data);
-            } catch (error) {
-                console.error('Failed to fetch clubs', error);
-                setClubs([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchClubs();
-    }, [authLoading, user]);
+    const clubs = clubsData || [];
+    const loading = isLoading;
 
     const filteredClubs = useMemo(() => {
         const query = searchQuery.trim().toLowerCase();
@@ -104,8 +92,7 @@ const ClubsPage = () => {
     };
 
     const refreshClubs = async () => {
-        const data = await clubsService.getAllClubs();
-        setClubs(data);
+        await mutate();
     };
 
     const handleSubmit = async (event) => {
@@ -146,7 +133,7 @@ const ClubsPage = () => {
 
         try {
             await clubsService.deleteClub(club.id);
-            setClubs((prev) => prev.filter((item) => item.id !== club.id));
+            mutate(clubs.filter((item) => item.id !== club.id), false);
         } catch (error) {
             console.error('Failed to delete club', error);
             alert('Club delete failed.');

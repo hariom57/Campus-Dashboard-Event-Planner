@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Building2, ChevronDown, ChevronUp, Loader, LogOut, Mail, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import useSWR from 'swr';
 import tinkeringLogo from '../assets/tinkering_logo.png';
 import clubsService from '../services/clubs';
 import miscService from '../services/misc';
@@ -18,43 +19,26 @@ const emptyPreferences = {
 const ProfilePage = () => {
     const navigate = useNavigate();
     const { user, logout, updateUserPreferences } = useAuth();
-    const [clubs, setClubs] = useState([]);
-    const [categories, setCategories] = useState([]);
+    const { data: clubsData, isLoading: clubsLoading, error: clubsError } = useSWR(
+        'all_clubs',
+        () => clubsService.getAllClubs()
+    );
+
+    const { data: categoriesData, isLoading: categoriesLoading, error: categoriesError } = useSWR(
+        'all_categories',
+        () => miscService.getAllEventCategories()
+    );
+
+    const clubs = clubsData || [];
+    const categories = categoriesData || [];
+    const loading = clubsLoading || categoriesLoading;
+    const error = clubsError || categoriesError ? 'Could not load preferences. Please refresh and try again.' : '';
+    
     const [preferences, setPreferences] = useState(emptyPreferences);
-    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState('');
-    const [error, setError] = useState('');
     const [clubSearch, setClubSearch] = useState('');
     const [expandedClubId, setExpandedClubId] = useState(null);
-
-    useEffect(() => {
-        let active = true;
-
-        const loadData = async () => {
-            setLoading(true);
-            setError('');
-
-            try {
-                const [clubData, categoryData] = await Promise.all([
-                    clubsService.getAllClubs(),
-                    miscService.getAllEventCategories(),
-                ]);
-
-                if (!active) return;
-                setClubs(clubData || []);
-                setCategories(categoryData || []);
-            } catch (loadError) {
-                console.error('Failed to load profile preferences', loadError);
-                if (active) setError('Could not load preferences. Please refresh and try again.');
-            } finally {
-                if (active) setLoading(false);
-            }
-        };
-
-        loadData();
-        return () => { active = false; };
-    }, []);
 
     useEffect(() => {
         setPreferences({
@@ -94,9 +78,9 @@ const ProfilePage = () => {
     const blockedCategorySet = useMemo(() => new Set(preferences.not_preferred_categories), [preferences.not_preferred_categories]);
 
     const handleSavePreferences = async () => {
+        if (!user) return;
         setSaving(true);
         setSaveMessage('');
-        setError('');
 
         try {
             const response = await userService.updatePreferences(preferences);

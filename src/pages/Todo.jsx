@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, CheckCircle, Circle, ClipboardList, Sparkles, Loader, AlignLeft, Calendar, Link as LinkIcon, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import useSWR from 'swr';
 import todoService from '../services/todo';
 import './Todo.css';
 
 const Todo = () => {
     const navigate = useNavigate();
-    const [todos, setTodos] = useState([]);
     const [inputValue, setInputValue] = useState('');
-    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState('');
     const [expandedTodoId, setExpandedTodoId] = useState(null);
     const [editData, setEditData] = useState({});
     const [showInFeed, setShowInFeed] = useState(() => localStorage.getItem('iitr_show_feed_todos') === 'true');
@@ -21,23 +19,14 @@ const Todo = () => {
         localStorage.setItem('iitr_show_feed_todos', showInFeed);
     }, [showInFeed]);
 
-    const loadTodos = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError('');
-            const data = await todoService.getAll();
-            setTodos(data);
-        } catch (err) {
-            console.error('Failed to load todos', err);
-            setError('Could not load your tasks. Please refresh the page.');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    const { data: todosData, error: loadError, isLoading, mutate } = useSWR(
+        'cal_todos',
+        () => todoService.getAll()
+    );
 
-    useEffect(() => {
-        loadTodos();
-    }, [loadTodos]);
+    const todos = todosData || [];
+    const loading = isLoading;
+    const error = loadError ? 'Could not load your tasks. Please refresh the page.' : '';
 
     const handleAddTodo = async (e) => {
         if (e) e.preventDefault();
@@ -51,12 +40,12 @@ const Todo = () => {
                 due_date: createData.due_date || null,
                 due_time: createData.due_time || null,
             });
-            setTodos(prev => [newTodo, ...prev]);
+            mutate([newTodo, ...todos], false);
             setCreateData({ text: '', notes: '', due_date: '', due_time: '' });
             setIsCreating(false);
         } catch (err) {
             console.error('Failed to create todo', err);
-            setError('Could not save task. Please try again.');
+            alert('Could not save task. Please try again.');
         } finally {
             setSaving(false);
         }
@@ -65,27 +54,29 @@ const Todo = () => {
     const toggleTodo = async (todo, e) => {
         if (e) e.stopPropagation();
         // Optimistic UI update
-        setTodos(prev => prev.map(t => t.id === todo.id ? { ...t, completed: !t.completed } : t));
+        const updatedTodos = todos.map(t => t.id === todo.id ? { ...t, completed: !t.completed } : t);
+        mutate(updatedTodos, false);
         try {
             await todoService.update(todo.id, { completed: !todo.completed });
         } catch (err) {
             // Revert on failure
             console.error('Failed to toggle todo', err);
-            setTodos(prev => prev.map(t => t.id === todo.id ? { ...t, completed: todo.completed } : t));
+            mutate(todos, false);
         }
     };
 
     const deleteTodo = async (id, e) => {
         if (e) e.stopPropagation();
         // Optimistic UI update
-        setTodos(prev => prev.filter(t => t.id !== id));
+        const updatedTodos = todos.filter(t => t.id !== id);
+        mutate(updatedTodos, false);
         if (expandedTodoId === id) setExpandedTodoId(null);
         try {
             await todoService.delete(id);
         } catch (err) {
             console.error('Failed to delete todo', err);
             // Reload on failure to restore real state
-            loadTodos();
+            mutate();
         }
     };
 
@@ -122,7 +113,8 @@ const Todo = () => {
 
         // Optimistic UI update
         const updatedTodo = { ...currentTodo, ...editData, text: editData.text.trim() || 'Untitled Task' };
-        setTodos(prev => prev.map(t => t.id === expandedTodoId ? updatedTodo : t));
+        const updatedTodos = todos.map(t => t.id === expandedTodoId ? updatedTodo : t);
+        mutate(updatedTodos, false);
 
         try {
             await todoService.update(expandedTodoId, {
@@ -133,7 +125,7 @@ const Todo = () => {
             });
         } catch (err) {
             console.error('Failed to update todo', err);
-            loadTodos(); // revert
+            mutate(); // revert
         }
     };
 

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, Bell, Filter, Clock, MapPin, Users, ChevronRight, ChevronLeft, Calendar as CalendarIcon, List as ListIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import useSWR from 'swr';
 import eventService from '../services/events';
 import academicCalendarService from '../services/academicCalendar';
 import todoService from '../services/todo';
@@ -74,8 +75,6 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const CalendarPage = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
-    const [events, setEvents] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [viewDate, setViewDate] = useState(new Date()); // For month navigation
     const [activeCategory, setActiveCategory] = useState('All');
@@ -83,71 +82,60 @@ const CalendarPage = () => {
 
     const weekDays = useMemo(() => buildWeekStrip(), []);
 
-    useEffect(() => {
-        const fetchAll = async () => {
-            try {
-                const [dynamicEvents, academicEvents] = await Promise.all([
-                    eventService.getAllEvents(),
-                    academicCalendarService.getAllEvents()
-                ]);
+    const { data: dynamicEvents = [], isLoading: loadDyn } = useSWR(
+        user !== undefined ? 'cal_dynamic' : null,
+        () => eventService.getAllEvents()
+    );
 
-                // Normalize academic events to match the displayed schema
-                const normalizedAcademic = academicEvents.map(ae => ({
-                    id: `academic-${ae.id}`,
-                    name: ae.title,
-                    tentative_start_time: ae.startDate + 'T00:00:00',
-                    tentative_end_time: ae.endDate + 'T23:59:59',
-                    raw_start: ae.startDate, // Store raw YYYY-MM-DD for perfect filtering
-                    raw_end: ae.endDate,
-                    description: ae.description,
-                    categories: ae.category,
-                    location_name: ae.isHoliday ? 'Campus Holiday' : 'Departments',
-                    isAcademicCalendar: true,
-                    isAllDay: true,
-                    club_name: 'IIT Roorkee',
-                }));
+    const { data: rawAcademicEvents = [], isLoading: loadAcad } = useSWR(
+        user !== undefined ? 'cal_academic' : null,
+        () => academicCalendarService.getAllEvents()
+    );
 
-                // Fetch Todos if preference is enabled
-                let todoData = [];
-                if (localStorage.getItem('iitr_show_feed_todos') === 'true') {
-                    try {
-                        const todos = await todoService.getAll();
-                        const activeTodos = todos.filter(t => !t.completed);
-                        
-                        todoData = activeTodos.map(todo => {
-                            const todayStr = new Date().toISOString().split('T')[0];
-                            const dateStr = todo.due_date || todayStr;
-                            const timeStr = todo.due_time || '00:00';
-                            
-                            return {
-                                id: `todo-${todo.id}`,
-                                name: todo.text,
-                                tentative_start_time: `${dateStr}T${timeStr}:00`,
-                                description: todo.notes,
-                                categories: 'Personal/Todo',
-                                location_name: todo.linked_event_name || 'Personal Task',
-                                isTodoEvent: true,
-                                isAllDay: !todo.due_time,
-                                club_name: user?.full_name || 'Personal',
-                            };
-                        });
-                    } catch(err) {
-                        console.error('Failed to load todo events for calendar', err);
-                    }
-                }
+    const { data: rawTodos = [] } = useSWR(
+        user !== undefined && localStorage.getItem('iitr_show_feed_todos') === 'true' ? 'cal_todos' : null,
+        () => todoService.getAll()
+    );
 
-                setEvents([...dynamicEvents, ...normalizedAcademic, ...todoData]);
-            } catch (err) {
-                console.error("Failed to load events", err);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const loading = loadDyn || loadAcad;
 
-        if (user !== undefined) {
-            fetchAll();
-        }
-    }, [user]);
+    const events = useMemo(() => {
+        const normalizedAcademic = rawAcademicEvents.map(ae => ({
+            id: `academic-${ae.id}`,
+            name: ae.title,
+            tentative_start_time: ae.startDate + 'T00:00:00',
+            tentative_end_time: ae.endDate + 'T23:59:59',
+            raw_start: ae.startDate,
+            raw_end: ae.endDate,
+            description: ae.description,
+            categories: ae.category,
+            location_name: ae.isHoliday ? 'Campus Holiday' : 'Departments',
+            isAcademicCalendar: true,
+            isAllDay: true,
+            club_name: 'IIT Roorkee',
+        }));
+
+        const activeTodos = rawTodos.filter(t => !t.completed);
+        const todoData = activeTodos.map(todo => {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const dateStr = todo.due_date || todayStr;
+            const timeStr = todo.due_time || '00:00';
+            
+            return {
+                id: `todo-${todo.id}`,
+                name: todo.text,
+                tentative_start_time: `${dateStr}T${timeStr}:00`,
+                description: todo.notes,
+                categories: 'Personal/Todo',
+                location_name: todo.linked_event_name || 'Personal Task',
+                isTodoEvent: true,
+                isAllDay: !todo.due_time,
+                club_name: user?.full_name || 'Personal',
+            };
+        });
+
+        return [...dynamicEvents, ...normalizedAcademic, ...todoData];
+    }, [dynamicEvents, rawAcademicEvents, rawTodos, user]);
 
     // Events for the selected date (using local comparison)
     const selectedDateStr = getLocalDateString(selectedDate);
