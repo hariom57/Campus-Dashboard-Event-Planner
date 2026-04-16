@@ -10,6 +10,7 @@ import eventService from '../services/events';
 import clubsService from '../services/clubs';
 import adminsService from '../services/admins';
 import clubAdminsService from '../services/clubAdmins';
+import { useSWRConfig } from 'swr';
 import './Admin.css';
 import { uploadImageToCDN } from '../services/upload';
 
@@ -39,6 +40,7 @@ const buildDateTimeWithOffset = (datePart, timePart) => {
 const Admin = () => {
     const { user, loading: authLoading } = useAuth();
     const navigate = useNavigate();
+    const { mutate } = useSWRConfig();
 
     const [activeTab, setActiveTab] = useState('events');
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -315,6 +317,10 @@ const Admin = () => {
                 isAllDay: false, isMultiDay: false, duration_minutes: 60,
                 description: '', category_ids: [], image_url: ''
             });
+
+            // Invalidate global SWR caches for all users currently on the app
+            mutate(key => typeof key === 'string' && key.includes('dynamic_events_page_'));
+            mutate('cal_dynamic');
             
             fetchEvents();
         } catch (error) {
@@ -408,6 +414,11 @@ const Admin = () => {
         try {
             await eventService.deleteEvent(id);
             setEvents(events.filter(e => e.id !== id));
+
+            // Invalidate global SWR caches for all users
+            mutate(key => typeof key === 'string' && key.includes('dynamic_events_page_'));
+            mutate('cal_dynamic');
+
             alert('Event deleted successfully!');
         } catch (err) {
             console.error("Failed to delete event", err);
@@ -801,6 +812,10 @@ const Admin = () => {
                 await clubsService.createClub(clubForm);
                 alert('Club created successfully!');
             }
+            
+            mutate('all_clubs');
+
+            setShowClubModal(false);
             // Refresh clubs list
             const allClubs = await clubsService.getAllClubs();
             let filtered = [];

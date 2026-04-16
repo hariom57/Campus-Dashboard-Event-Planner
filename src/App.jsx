@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { SWRConfig } from 'swr';
 import { AuthProvider } from './context/AuthContext';
 import BottomNav from './components/Layout/BottomNav';
 import eventReminderService from './services/eventReminders';
@@ -32,21 +33,29 @@ function App() {
 
     return (
         <Router>
-            <AuthProvider>
-                <Routes>
-                    {/* Public Landing Route (No Bottom Nav) */}
-                    <Route path="/" element={<LandingPage />} />
+            <SWRConfig 
+                value={{
+                    refreshInterval: 30000, 
+                    revalidateOnFocus: true,
+                    revalidateOnReconnect: true
+                }}
+            >
+                <AuthProvider>
+                    <Routes>
+                        {/* Public Landing Route (No Bottom Nav) */}
+                        <Route path="/" element={<LandingPage />} />
 
-                    {/* App Routes (with Bottom Nav) */}
-                    <Route path="/home" element={<AppShell><Home /></AppShell>} />
-                    <Route path="/calendar" element={<AppShell><CalendarPage /></AppShell>} />
-                    <Route path="/todo" element={<AppShell><Todo /></AppShell>} />
-                    <Route path="/profile" element={<AppShell><ProfilePage /></AppShell>} />
-                    <Route path="/admin" element={<AppShell><Admin /></AppShell>} />
-                    <Route path="/event/:eventId" element={<AppShell><EventDetail /></AppShell>} />
-                </Routes>
-                <InstallPrompt />
-            </AuthProvider>
+                        {/* App Routes (with Bottom Nav) */}
+                        <Route path="/home" element={<AppShell><Home /></AppShell>} />
+                        <Route path="/calendar" element={<AppShell><CalendarPage /></AppShell>} />
+                        <Route path="/todo" element={<AppShell><Todo /></AppShell>} />
+                        <Route path="/profile" element={<AppShell><ProfilePage /></AppShell>} />
+                        <Route path="/admin" element={<AppShell><Admin /></AppShell>} />
+                        <Route path="/event/:eventId" element={<AppShell><EventDetail /></AppShell>} />
+                    </Routes>
+                    <InstallPrompt />
+                </AuthProvider>
+            </SWRConfig>
         </Router>
     );
 }
