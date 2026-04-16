@@ -281,6 +281,12 @@
     }
 }
 
+@media (min-width: 1024px) {
+    .clubs-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
 /* Form Utilities (Shared with Admin but scoped or repeated here for safety) */
 .form-grid {
     display: grid;
