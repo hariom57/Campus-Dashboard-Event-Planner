@@ -114,7 +114,8 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
 
     const categoryColor = CATEGORY_COLORS[primaryCategory] || '#607d8b';
 
-    const canSetReminder = Boolean(event?.tentative_start_time) && !event?.isAllDay;
+    // Allow setting reminders for all events, including all-day ones (they will trigger the night before at 11:30 PM)
+    const canSetReminder = Boolean(event?.tentative_start_time);
 
     const handleReminderClick = (evt) => {
         evt.stopPropagation();
@@ -181,7 +182,7 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
                         className={`event-reminder-btn event-reminder-btn--academic ${isReminderEnabled ? 'enabled' : ''}`}
                         aria-label={isReminderEnabled ? 'Disable reminders' : 'Enable reminders'}
                         onClick={handleReminderClick}
-                        title={canSetReminder ? 'Notify me 30 min and 5 min before' : 'Reminders unavailable for all-day events'}
+                        title={canSetReminder ? 'Notify me 30 min and 5 min before' : 'Reminders unavailable'}
                         style={{ position: 'static' }}
                         disabled={!canSetReminder}
                     >
@@ -212,7 +213,7 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
                             className={`event-reminder-btn ${isReminderEnabled ? 'enabled' : ''}`}
                             aria-label={isReminderEnabled ? 'Disable reminders' : 'Enable reminders'}
                             onClick={handleReminderClick}
-                            title={canSetReminder ? 'Notify me 30 min and 5 min before' : 'Reminders unavailable for all-day events'}
+                            title={canSetReminder ? 'Notify me 30 min and 5 min before' : 'Reminders unavailable'}
                             style={{ position: 'static' }}
                             disabled={!canSetReminder}
                         >
