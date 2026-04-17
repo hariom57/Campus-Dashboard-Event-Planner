@@ -16,6 +16,12 @@ const Reminder = sequelize.define('Reminder', {
         references: { model: 'user', key: 'user_id' },
         onDelete: 'CASCADE',
     },
+    offset_minutes: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 30,
+        primaryKey: true,
+    },
     reminder_time: {
         type: DataTypes.DATE,
         allowNull: false,

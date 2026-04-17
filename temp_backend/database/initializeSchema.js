@@ -110,6 +110,53 @@ const initializeSchema = async () => {
             ADD COLUMN IF NOT EXISTS linked_event_date TEXT;
         `).catch(err => console.error('Todo Column existence check failed:', err.message));
 
+        // Ensure reminder table supports multiple offsets per user/event pair.
+        await sequelize.query(`
+            ALTER TABLE reminder
+            ADD COLUMN IF NOT EXISTS offset_minutes INTEGER;
+        `);
+
+        await sequelize.query(`
+            UPDATE reminder
+            SET offset_minutes = GREATEST(
+                1,
+                ROUND(EXTRACT(EPOCH FROM (event.tentative_start_time - reminder.reminder_time)) / 60.0)
+            )::INTEGER
+            FROM event
+            WHERE reminder.event_id = event.id
+              AND reminder.offset_minutes IS NULL;
+        `);
+
+        await sequelize.query(`
+            UPDATE reminder
+            SET offset_minutes = 30
+            WHERE offset_minutes IS NULL;
+        `);
+
+        await sequelize.query(`
+            ALTER TABLE reminder
+            ALTER COLUMN offset_minutes SET NOT NULL,
+            ALTER COLUMN offset_minutes SET DEFAULT 30;
+        `);
+
+        await sequelize.query(`
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = 'reminder_pkey'
+                      AND conrelid = 'reminder'::regclass
+                ) THEN
+                    ALTER TABLE reminder DROP CONSTRAINT reminder_pkey;
+                END IF;
+
+                ALTER TABLE reminder
+                ADD CONSTRAINT reminder_pkey PRIMARY KEY (event_id, user_id, offset_minutes);
+            END
+            $$;
+        `);
+
 
         // Normalize legacy timestamp columns to timestamptz so event times are timezone-safe.
         await sequelize.query(`

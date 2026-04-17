@@ -110,6 +110,10 @@ const EventDetail = () => {
         if (result.error === 'event-started') {
             window.alert('This event has already started, so reminders cannot be scheduled.');
         }
+
+        if (result.error === 'sync-failed') {
+            window.alert('Could not sync reminder to your account right now. Please try again.');
+        }
     };
 
     const handleShareEvent = async () => {

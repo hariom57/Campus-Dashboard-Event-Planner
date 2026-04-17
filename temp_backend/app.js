@@ -82,12 +82,6 @@ app.use(
     })
 );
 
-// Initialize database schema on startup
-initializeSchema().catch(err => {
-    console.error('Failed to initialize database:', err);
-    process.exit(1);
-});
-
 // routes
 // oauth routes
 app.use('/oauth', require('./routes/auth.js'));
@@ -111,6 +105,8 @@ app.use('/academic-calendar', require('./routes/academicCalendar.js'));
 app.use('/clubs', require('./routes/club.js'));
 // Personal todo routes
 app.use('/todos', require('./routes/todo.js'));
+// Reminder routes
+app.use('/reminders', require('./routes/reminder.js'));
 
 app.get('/', async (_, res) => {
 
@@ -133,6 +129,18 @@ app.get('/', async (_, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Listening to Port:${PORT}`);
-});
+const startServer = async () => {
+    try {
+        // Initialize database schema before accepting requests.
+        await initializeSchema();
+
+        app.listen(PORT, () => {
+            console.log(`Listening to Port:${PORT}`);
+        });
+    } catch (err) {
+        console.error('Failed to initialize database:', err);
+        process.exit(1);
+    }
+};
+
+startServer();

@@ -1,3 +1,5 @@
+import remindersService from './reminders';
+
 const STORAGE_KEY = 'event-reminder-subscriptions-v1';
 const SENT_KEY = 'event-reminder-sent-v1';
 const DEFAULT_REMINDER_OFFSETS_MINUTES = [30, 5];
@@ -40,6 +42,8 @@ const setSentMap = (sentMap) => {
 
 const reminderKey = (eventId, offsetMinutes) => `${eventId}-${offsetMinutes}`;
 
+const isServerPersistableEventId = (eventId) => /^\d+$/.test(String(eventId));
+
 const normalizeOffsetsMinutes = (offsetsMinutes) => {
     const source = Array.isArray(offsetsMinutes) && offsetsMinutes.length > 0
         ? offsetsMinutes
@@ -64,6 +68,51 @@ const normalizeEvent = (event, offsetsMinutes) => {
         club_name: event.club_name || 'IITR Campus',
         offsetsMinutes: normalizeOffsetsMinutes(offsetsMinutes),
     };
+};
+
+const mergeRemoteSubscriptions = (remoteEntries) => {
+    const current = getSubscriptions();
+    const currentPersistableIds = Object.values(current)
+        .map((entry) => entry.id)
+        .filter((id) => isServerPersistableEventId(id));
+    const merged = {};
+
+    // Keep local-only events (academic/todo synthetic ids) untouched.
+    Object.values(current).forEach((entry) => {
+        if (!isServerPersistableEventId(entry.id)) {
+            merged[entry.id] = {
+                ...entry,
+                offsetsMinutes: normalizeOffsetsMinutes(entry.offsetsMinutes),
+            };
+        }
+    });
+
+    remoteEntries.forEach((entry) => {
+        const normalized = normalizeEvent(entry, entry.offsetsMinutes);
+        if (normalized) {
+            merged[normalized.id] = normalized;
+        }
+    });
+
+    const remotePersistableIds = new Set(
+        remoteEntries
+            .map((entry) => String(entry?.id))
+            .filter((id) => isServerPersistableEventId(id))
+    );
+
+    // Always reset timers for server-synced events so removed offsets do not fire stale alarms.
+    remotePersistableIds.forEach((id) => {
+        clearTimersForEvent(id);
+    });
+
+    currentPersistableIds
+        .filter((id) => !remotePersistableIds.has(String(id)))
+        .forEach((id) => {
+            clearTimersForEvent(id);
+            clearSentKeysForEvent(id);
+        });
+
+    setSubscriptions(merged);
 };
 
 const clearTimersForEvent = (eventId) => {
@@ -167,16 +216,6 @@ const showReminderNotification = async (event, offsetMinutes) => {
     }
 };
 
-const scheduleWithLongTimeout = (delayMs, callback) => {
-    if (delayMs <= MAX_TIMEOUT_MS) {
-        return setTimeout(callback, delayMs);
-    }
-
-    return setTimeout(() => {
-        scheduleWithLongTimeout(delayMs - MAX_TIMEOUT_MS, callback);
-    }, MAX_TIMEOUT_MS);
-};
-
 const scheduleEventReminder = (event, offsetMinutes) => {
     const key = reminderKey(event.id, offsetMinutes);
     clearTimeout(timerMap.get(key));
@@ -190,11 +229,14 @@ const scheduleEventReminder = (event, offsetMinutes) => {
 
     if (delayMs <= 0 || hasSent(event.id, offsetMinutes)) return;
 
-    const timer = scheduleWithLongTimeout(delayMs, async () => {
+    // For very long delays, rely on monitor polling near trigger time.
+    if (delayMs > MAX_TIMEOUT_MS) return;
+
+    const timer = setTimeout(async () => {
         await showReminderNotification(event, offsetMinutes);
         markSent(event.id, offsetMinutes);
         timerMap.delete(key);
-    });
+    }, delayMs);
 
     timerMap.set(key, timer);
 };
@@ -302,10 +344,24 @@ const eventReminderService = {
 
     scheduleStoredReminders: () => {
         pruneOldData();
-        const subscriptions = getSubscriptions();
-        Object.values(subscriptions).forEach((event) => scheduleEvent(event));
+
+        // Start with cached subscriptions for instant behavior.
+        const cached = getSubscriptions();
+        Object.values(cached).forEach((event) => scheduleEvent(event));
         ensureReminderMonitor();
         checkAndFireDueReminders();
+
+        // Refresh from backend for cross-device persistence.
+        remindersService.getAll()
+            .then((remoteEntries) => {
+                mergeRemoteSubscriptions(remoteEntries);
+                const subscriptions = getSubscriptions();
+                Object.values(subscriptions).forEach((event) => scheduleEvent(event));
+                checkAndFireDueReminders();
+            })
+            .catch((error) => {
+                console.warn('Could not sync reminders from server, using local cache:', error?.message || error);
+            });
     },
 
     updateReminderSnapshot: (event) => {
@@ -329,6 +385,14 @@ const eventReminderService = {
         const subscriptions = getSubscriptions();
 
         if (subscriptions[normalized.id]) {
+            if (isServerPersistableEventId(normalized.id)) {
+                try {
+                    await remindersService.disable(normalized.id);
+                } catch (error) {
+                    return { enabled: true, error: 'sync-failed' };
+                }
+            }
+
             clearTimersForEvent(normalized.id);
             delete subscriptions[normalized.id];
             setSubscriptions(subscriptions);
@@ -347,6 +411,21 @@ const eventReminderService = {
         const eventStartMs = new Date(normalized.tentative_start_time).getTime();
         if (!Number.isFinite(eventStartMs) || eventStartMs <= Date.now()) {
             return { enabled: false, error: 'event-started' };
+        }
+
+        if (isServerPersistableEventId(normalized.id)) {
+            try {
+                const persisted = await remindersService.setOffsets(normalized.id, normalized.offsetsMinutes);
+                if (persisted) {
+                    normalized.name = persisted.name || normalized.name;
+                    normalized.tentative_start_time = persisted.tentative_start_time || normalized.tentative_start_time;
+                    normalized.location_name = persisted.location_name || normalized.location_name;
+                    normalized.club_name = persisted.club_name || normalized.club_name;
+                    normalized.offsetsMinutes = normalizeOffsetsMinutes(persisted.offsetsMinutes);
+                }
+            } catch (error) {
+                return { enabled: false, error: 'sync-failed' };
+            }
         }
 
         subscriptions[normalized.id] = normalized;
@@ -382,6 +461,21 @@ const eventReminderService = {
         const eventStartMs = new Date(normalized.tentative_start_time).getTime();
         if (!Number.isFinite(eventStartMs) || eventStartMs <= Date.now()) {
             return { enabled: false, error: 'event-started' };
+        }
+
+        if (isServerPersistableEventId(normalized.id)) {
+            try {
+                const persisted = await remindersService.setOffsets(normalized.id, normalized.offsetsMinutes);
+                if (persisted) {
+                    normalized.name = persisted.name || normalized.name;
+                    normalized.tentative_start_time = persisted.tentative_start_time || normalized.tentative_start_time;
+                    normalized.location_name = persisted.location_name || normalized.location_name;
+                    normalized.club_name = persisted.club_name || normalized.club_name;
+                    normalized.offsetsMinutes = normalizeOffsetsMinutes(persisted.offsetsMinutes);
+                }
+            } catch (error) {
+                return { enabled: false, error: 'sync-failed' };
+            }
         }
 
         subscriptions[normalized.id] = normalized;
