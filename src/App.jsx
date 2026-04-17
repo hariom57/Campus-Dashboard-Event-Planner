@@ -10,6 +10,7 @@ import Admin from './pages/Admin';
 import Todo from './pages/Todo';
 import LandingPage from './pages/LandingPage';
 import ProfilePage from './pages/Profile';
+import NotificationsPage from './pages/Notifications';
 import EventDetail from './pages/EventDetail';
 import InstallPrompt from './components/Widgets/InstallPrompt';
 import './App.css';
@@ -50,6 +51,7 @@ function App() {
                         <Route path="/calendar" element={<AppShell><CalendarPage /></AppShell>} />
                         <Route path="/todo" element={<AppShell><Todo /></AppShell>} />
                         <Route path="/profile" element={<AppShell><ProfilePage /></AppShell>} />
+                        <Route path="/notifications" element={<AppShell><NotificationsPage /></AppShell>} />
                         <Route path="/admin" element={<AppShell><Admin /></AppShell>} />
                         <Route path="/event/:eventId" element={<AppShell><EventDetail /></AppShell>} />
                     </Routes>

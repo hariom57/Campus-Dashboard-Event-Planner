@@ -1,6 +1,6 @@
 const STORAGE_KEY = 'event-reminder-subscriptions-v1';
 const SENT_KEY = 'event-reminder-sent-v1';
-const REMINDER_OFFSETS_MINUTES = [30, 5];
+const DEFAULT_REMINDER_OFFSETS_MINUTES = [30, 5];
 const MAX_TIMEOUT_MS = 2147483647;
 const CHECK_INTERVAL_MS = 20 * 1000;
 const DUE_WINDOW_MS = 2 * 60 * 1000;
@@ -40,7 +40,20 @@ const setSentMap = (sentMap) => {
 
 const reminderKey = (eventId, offsetMinutes) => `${eventId}-${offsetMinutes}`;
 
-const normalizeEvent = (event) => {
+const normalizeOffsetsMinutes = (offsetsMinutes) => {
+    const source = Array.isArray(offsetsMinutes) && offsetsMinutes.length > 0
+        ? offsetsMinutes
+        : DEFAULT_REMINDER_OFFSETS_MINUTES;
+
+    const normalized = source
+        .map((offset) => Number(offset))
+        .filter((offset) => Number.isFinite(offset) && offset > 0)
+        .map((offset) => Math.floor(offset));
+
+    return Array.from(new Set(normalized)).sort((a, b) => b - a);
+};
+
+const normalizeEvent = (event, offsetsMinutes) => {
     if (!event || event.id == null || !event.tentative_start_time) return null;
 
     return {
@@ -49,12 +62,13 @@ const normalizeEvent = (event) => {
         tentative_start_time: event.tentative_start_time,
         location_name: event.location_name || 'Campus',
         club_name: event.club_name || 'IITR Campus',
+        offsetsMinutes: normalizeOffsetsMinutes(offsetsMinutes),
     };
 };
 
 const clearTimersForEvent = (eventId) => {
-    REMINDER_OFFSETS_MINUTES.forEach((offset) => {
-        const key = reminderKey(eventId, offset);
+    Array.from(timerMap.keys()).forEach((key) => {
+        if (!key.startsWith(`${eventId}-`)) return;
         const timer = timerMap.get(key);
         if (timer) {
             clearTimeout(timer);
@@ -65,8 +79,18 @@ const clearTimersForEvent = (eventId) => {
 
 const clearSentKeysForEvent = (eventId) => {
     const sentMap = getSentMap();
-    REMINDER_OFFSETS_MINUTES.forEach((offset) => {
-        delete sentMap[reminderKey(eventId, offset)];
+    Object.keys(sentMap).forEach((key) => {
+        if (key.startsWith(`${eventId}-`)) {
+            delete sentMap[key];
+        }
+    });
+    setSentMap(sentMap);
+};
+
+const clearSentKeysForOffsets = (eventId, offsetsMinutes) => {
+    const sentMap = getSentMap();
+    offsetsMinutes.forEach((offsetMinutes) => {
+        delete sentMap[reminderKey(eventId, offsetMinutes)];
     });
     setSentMap(sentMap);
 };
@@ -176,7 +200,9 @@ const scheduleEventReminder = (event, offsetMinutes) => {
 };
 
 const scheduleEvent = (event) => {
-    REMINDER_OFFSETS_MINUTES.forEach((offsetMinutes) => {
+    const offsetsMinutes = normalizeOffsetsMinutes(event.offsetsMinutes);
+
+    offsetsMinutes.forEach((offsetMinutes) => {
         scheduleEventReminder(event, offsetMinutes);
     });
 };
@@ -189,7 +215,7 @@ const checkAndFireDueReminders = async () => {
         const eventStartMs = new Date(event.tentative_start_time).getTime();
         if (!Number.isFinite(eventStartMs)) continue;
 
-        for (const offsetMinutes of REMINDER_OFFSETS_MINUTES) {
+        for (const offsetMinutes of normalizeOffsetsMinutes(event.offsetsMinutes)) {
             const key = reminderKey(event.id, offsetMinutes);
             if (hasSent(event.id, offsetMinutes)) continue;
 
@@ -259,6 +285,16 @@ const eventReminderService = {
         return Object.keys(subscriptions);
     },
 
+    getReminderEntries: () => {
+        const subscriptions = getSubscriptions();
+        return Object.values(subscriptions)
+            .map((event) => ({
+                ...event,
+                offsetsMinutes: normalizeOffsetsMinutes(event.offsetsMinutes),
+            }))
+            .sort((a, b) => new Date(a.tentative_start_time) - new Date(b.tentative_start_time));
+    },
+
     isReminderEnabled: (eventId) => {
         const subscriptions = getSubscriptions();
         return Boolean(subscriptions[String(eventId)]);
@@ -273,10 +309,10 @@ const eventReminderService = {
     },
 
     updateReminderSnapshot: (event) => {
-        const normalized = normalizeEvent(event);
+        const subscriptions = getSubscriptions();
+        const normalized = normalizeEvent(event, subscriptions[String(event?.id)]?.offsetsMinutes);
         if (!normalized) return;
 
-        const subscriptions = getSubscriptions();
         if (!subscriptions[normalized.id]) return;
 
         subscriptions[normalized.id] = normalized;
@@ -316,6 +352,45 @@ const eventReminderService = {
         subscriptions[normalized.id] = normalized;
         setSubscriptions(subscriptions);
         clearSentKeysForEvent(normalized.id);
+        scheduleEvent(normalized);
+        ensureReminderMonitor();
+        checkAndFireDueReminders();
+
+        return { enabled: true };
+    },
+
+    setReminderOffsets: async (event, offsetsMinutes) => {
+        const normalized = normalizeEvent(event, offsetsMinutes);
+        if (!normalized) {
+            return { enabled: false, error: 'invalid-event' };
+        }
+
+        const subscriptions = getSubscriptions();
+        const previousOffsets = normalizeOffsetsMinutes(subscriptions[normalized.id]?.offsetsMinutes);
+        const nextOffsets = normalized.offsetsMinutes;
+
+        if (!subscriptions[normalized.id]) {
+            const permission = await requestPermission();
+            if (permission !== 'granted') {
+                return {
+                    enabled: false,
+                    error: permission === 'unsupported' ? 'unsupported' : 'permission-denied',
+                };
+            }
+        }
+
+        const eventStartMs = new Date(normalized.tentative_start_time).getTime();
+        if (!Number.isFinite(eventStartMs) || eventStartMs <= Date.now()) {
+            return { enabled: false, error: 'event-started' };
+        }
+
+        subscriptions[normalized.id] = normalized;
+        setSubscriptions(subscriptions);
+        clearTimersForEvent(normalized.id);
+        clearSentKeysForOffsets(
+            normalized.id,
+            previousOffsets.filter((offset) => !nextOffsets.includes(offset))
+        );
         scheduleEvent(normalized);
         ensureReminderMonitor();
         checkAndFireDueReminders();

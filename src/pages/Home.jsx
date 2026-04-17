@@ -33,7 +33,7 @@ const extractCategoryNames = (event) => {
 
 const Home = () => {
     const navigate = useNavigate();
-    const { user, loading: authLoading, notifications, backendSlow } = useAuth();
+    const { user, loading: authLoading, backendSlow } = useAuth();
     
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -258,9 +258,9 @@ const Home = () => {
                     <button className="header-icon-btn" onClick={() => setShowSearch(s => !s)} aria-label="Search">
                         <Search size={18} />
                     </button>
-                    <button className="header-icon-btn" onClick={() => navigate('/profile')} aria-label="Notifications" style={{ position: 'relative' }}>
+                    <button className="header-icon-btn" onClick={() => navigate('/notifications')} aria-label="Notifications & reminders" style={{ position: 'relative' }}>
                         <Bell size={18} />
-                        {notifications?.length > 0 && <span className="header-bell-dot" />}
+                        {reminderEventIds.size > 0 && <span className="header-bell-dot" />}
                     </button>
                 </div>
             </div>
