@@ -4,6 +4,7 @@ import { Clock, MapPin, CalendarDays, Bell, BellRing, Share2, Pointer, Clipboard
 import { shareEvent, shareEventOnWhatsApp } from '../../services/shareEvent';
 import todoService from '../../services/todo';
 import WhatsAppIcon from '../Icons/WhatsAppIcon';
+import { notify } from '../../services/notify';
 import './EventCard.css';
 
 // Deterministic gradient per event id/name
@@ -127,7 +128,7 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
         evt.stopPropagation();
         const result = await shareEvent(event);
         if (result.method === 'clipboard') {
-            window.alert('Event link copied to clipboard.');
+            notify('Event link copied to clipboard.');
         }
     };
 
@@ -157,10 +158,10 @@ const EventCard = ({ event, isReminderEnabled = false, onToggleReminder }) => {
                 linked_event_club: event.club_name || primaryCategory,
                 linked_event_date: event.tentative_start_time
             });
-            window.alert('Task added to your Assistant Todo list!');
+            notify('Task added to your Assistant Todo list!');
         } catch (err) {
             console.error('Failed to add to Todo', err);
-            window.alert('Failed to add to Todo list. Please try again.');
+            notify('Failed to add to Todo list. Please try again.');
         }
     };
 

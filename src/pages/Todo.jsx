@@ -3,6 +3,7 @@ import { Plus, Trash2, CheckCircle, Circle, ClipboardList, Sparkles, Loader, Ali
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import todoService from '../services/todo';
+import { notify } from '../services/notify';
 import './Todo.css';
 
 const Todo = () => {
@@ -46,7 +47,7 @@ const Todo = () => {
             setIsCreating(false);
         } catch (err) {
             console.error('Failed to create todo', err);
-            alert('Could not save task. Please try again.');
+            notify('Could not save task. Please try again.');
         } finally {
             setSaving(false);
         }

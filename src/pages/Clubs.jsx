@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import clubsService from '../services/clubs';
 import './Clubs.css';
 import { uploadImageToCDN } from '../services/upload';
+import { notify } from '../services/notify';
 
 const emptyForm = {
     name: '',
@@ -55,9 +56,9 @@ const ClubsPage = () => {
         try {
             const logoUrl = await uploadImageToCDN(file);
             setFormData(prev => ({ ...prev, logo_url: logoUrl }));
-            alert("Logo uploaded successfully!");
+            notify("Logo uploaded successfully!");
         } catch (err) {
-            alert("Failed to upload logo. Please try again.");
+            notify("Failed to upload logo. Please try again.");
         }
     };
 
@@ -121,7 +122,7 @@ const ClubsPage = () => {
             closeModal();
         } catch (error) {
             console.error('Failed to save club', error);
-            alert('Club save failed. Please check the form and permissions.');
+            notify('Club save failed. Please check the form and permissions.');
         } finally {
             setSaving(false);
         }
@@ -136,7 +137,7 @@ const ClubsPage = () => {
             mutate(clubs.filter((item) => item.id !== club.id), false);
         } catch (error) {
             console.error('Failed to delete club', error);
-            alert('Club delete failed.');
+            notify('Club delete failed.');
         }
     };
 

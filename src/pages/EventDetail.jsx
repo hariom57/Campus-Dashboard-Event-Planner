@@ -9,6 +9,7 @@ import { shareEvent, shareEventOnWhatsApp } from '../services/shareEvent';
 import WhatsAppIcon from '../components/Icons/WhatsAppIcon';
 import './EventDetail.css';
 import academicCalendarService from '../services/academicCalendar';
+import { notify } from '../services/notify';
 
 const GRADIENTS = [
     'linear-gradient(145deg, #713364 0%, #4a1d3f 100%)',
@@ -100,19 +101,13 @@ const EventDetail = () => {
         setIsReminderEnabled(result.enabled);
 
         if (result.error === 'unsupported') {
-            window.alert('Notifications are not supported on this browser.');
-        }
-
-        if (result.error === 'permission-denied') {
-            window.alert('Please allow notifications in browser settings to get reminders.');
-        }
-
-        if (result.error === 'event-started') {
-            window.alert('This event has already started, so reminders cannot be scheduled.');
-        }
-
-        if (result.error === 'sync-failed') {
-            window.alert('Could not sync reminder to your account right now. Please try again.');
+            notify('Notifications are not supported on this browser.', 'warning');
+        } else if (result.error === 'permission-denied') {
+            notify('Please allow notifications in browser settings to get reminders.', 'warning');
+        } else if (result.error === 'event-started') {
+            notify('This event has already started, so reminders cannot be scheduled.', 'warning');
+        } else if (result.error === 'sync-failed') {
+            notify('Could not sync reminder to your account right now. Please try again.', 'error');
         }
     };
 
@@ -121,7 +116,7 @@ const EventDetail = () => {
 
         const result = await shareEvent(event);
         if (result.method === 'clipboard') {
-            window.alert('Event link copied to clipboard.');
+            notify('Event link copied to clipboard.');
         }
     };
 

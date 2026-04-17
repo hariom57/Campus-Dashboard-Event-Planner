@@ -13,6 +13,7 @@ import ProfilePage from './pages/Profile';
 import NotificationsPage from './pages/Notifications';
 import EventDetail from './pages/EventDetail';
 import InstallPrompt from './components/Widgets/InstallPrompt';
+import ToastViewport from './components/Common/ToastViewport';
 import './App.css';
 
 // Shell layout that wraps pages needing the bottom navigation
@@ -56,6 +57,7 @@ function App() {
                         <Route path="/event/:eventId" element={<AppShell><EventDetail /></AppShell>} />
                     </Routes>
                     <InstallPrompt />
+                    <ToastViewport />
                 </AuthProvider>
             </SWRConfig>
         </Router>

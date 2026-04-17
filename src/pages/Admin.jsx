@@ -13,6 +13,7 @@ import clubAdminsService from '../services/clubAdmins';
 import { useSWRConfig } from 'swr';
 import './Admin.css';
 import { uploadImageToCDN } from '../services/upload';
+import { notify } from '../services/notify';
 
 const pad2 = (value) => String(value).padStart(2, '0');
 
@@ -263,9 +264,9 @@ const Admin = () => {
             setLoading(true)
             const imageUrl = await uploadImageToCDN(file);
             setNewEvent(prev => ({ ...prev, image_url: imageUrl }));
-            alert("Image uploaded successfully!");
+            notify("Image uploaded successfully!");
         } catch (err) {
-            alert("Failed to upload image. Please try again.");
+            notify("Failed to upload image. Please try again.");
         } finally {
             setLoading(false)
         }
@@ -305,7 +306,7 @@ const Admin = () => {
         console.log('[DEBUG] Tentative Start Time:', tentativeStartTime);
 
         if (!tentativeStartTime) {
-            alert('Please enter a valid date and time.');
+            notify('Please enter a valid date and time.');
             return;
         }
 
@@ -319,7 +320,7 @@ const Admin = () => {
                 const end = new Date(`${newEvent.endDate}T${endTime}`);
 
                 if (end <= start) {
-                    alert('End date must be after start date.');
+                    notify('End date must be after start date.');
                     return;
                 }
                 calculatedDuration = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
@@ -344,7 +345,7 @@ const Admin = () => {
                 : await eventService.createEvent(payload);
             
             console.log('[DEBUG] Server Response:', response);
-            alert(`Event "${payload.name}" ${editingEventId ? 'updated' : 'created'} successfully!`);
+            notify(`Event "${payload.name}" ${editingEventId ? 'updated' : 'created'} successfully!`);
 
             setLoading(false);
             setShowCreateModal(false);
@@ -363,7 +364,7 @@ const Admin = () => {
         } catch (error) {
             console.error("Failed to save event", error);
             const msg = error.response?.data?.message || 'Please check your permissions or try again.';
-            alert(`Failed to save event: ${msg}`);
+            notify(`Failed to save event: ${msg}`);
         } finally {
             setLoading(false);
         }
@@ -456,10 +457,10 @@ const Admin = () => {
             mutate(key => typeof key === 'string' && key.includes('dynamic_events_page_'));
             mutate('cal_dynamic');
 
-            alert('Event deleted successfully!');
+            notify('Event deleted successfully!');
         } catch (err) {
             console.error("Failed to delete event", err);
-            alert("Failed to delete event.");
+            notify("Failed to delete event.");
         }
     };
 
@@ -543,10 +544,10 @@ const Admin = () => {
 
             if (editingLocationId) {
                 await miscService.updateLocation(editingLocationId, payload);
-                alert('Location updated successfully!');
+                notify('Location updated successfully!');
             } else {
                 await miscService.createLocation(payload);
-                alert('Location created successfully!');
+                notify('Location created successfully!');
             }
 
             await fetchLocations();
@@ -554,7 +555,7 @@ const Admin = () => {
             setEditingLocationId(null);
         } catch (error) {
             console.error('Failed to save location', error);
-            alert('Failed to save location. Please check your permissions and fields.');
+            notify('Failed to save location. Please check your permissions and fields.');
         } finally {
             setLocationSaving(false);
         }
@@ -567,10 +568,10 @@ const Admin = () => {
         try {
             await miscService.deleteLocation(locationId);
             setLocations((prev) => prev.filter((loc) => loc.id !== locationId));
-            alert('Location deleted successfully!');
+            notify('Location deleted successfully!');
         } catch (error) {
             console.error('Failed to delete location', error);
-            alert('Failed to delete location.');
+            notify('Failed to delete location.');
         }
     };
 
@@ -603,10 +604,10 @@ const Admin = () => {
 
             if (editingCategoryId) {
                 await miscService.updateEventCategory(editingCategoryId, payload);
-                alert('Category updated successfully!');
+                notify('Category updated successfully!');
             } else {
                 await miscService.createEventCategory(payload);
-                alert('Category created successfully!');
+                notify('Category created successfully!');
             }
 
             await fetchCategories();
@@ -615,7 +616,7 @@ const Admin = () => {
             setCategoryForm({ name: '' });
         } catch (error) {
             console.error('Failed to save category', error);
-            alert('Failed to save category. Please check your permissions and fields.');
+            notify('Failed to save category. Please check your permissions and fields.');
         } finally {
             setCategorySaving(false);
         }
@@ -628,10 +629,10 @@ const Admin = () => {
         try {
             await miscService.deleteEventCategory(categoryId);
             setCategories((prev) => prev.filter((cat) => cat.id !== categoryId));
-            alert('Category deleted successfully!');
+            notify('Category deleted successfully!');
         } catch (error) {
             console.error('Failed to delete category', error);
-            alert('Failed to delete category.');
+            notify('Failed to delete category.');
         }
     };
 
@@ -673,7 +674,7 @@ const Admin = () => {
 
         const enrollment = String(newClubAdminEnrollment || '').trim();
         if (!enrollment) {
-            alert('Please enter a valid enrollment number.');
+            notify('Please enter a valid enrollment number.');
             return;
         }
 
@@ -682,10 +683,10 @@ const Admin = () => {
             await clubAdminsService.addClubAdmin(selectedClubAdminClubId, enrollment);
             setNewClubAdminEnrollment('');
             await fetchClubAdmins(selectedClubAdminClubId);
-            alert('Club admin added successfully!');
+            notify('Club admin added successfully!');
         } catch (error) {
             console.error('Failed to add club admin', error);
-            alert('Failed to add club admin. Please verify enrollment number.');
+            notify('Failed to add club admin. Please verify enrollment number.');
         } finally {
             setClubAdminSaving(false);
         }
@@ -698,10 +699,10 @@ const Admin = () => {
         try {
             await clubAdminsService.removeClubAdmin(selectedClubAdminClubId, admin.user_id);
             setClubAdmins((prev) => prev.filter((item) => String(item.user_id) !== String(admin.user_id)));
-            alert('Club admin removed successfully!');
+            notify('Club admin removed successfully!');
         } catch (error) {
             console.error('Failed to remove club admin', error);
-            alert('Failed to remove club admin.');
+            notify('Failed to remove club admin.');
         }
     };
 
@@ -732,7 +733,7 @@ const Admin = () => {
             setShowAdminModal(true);
         } catch (error) {
             console.error('Failed to fetch admin details', error);
-            alert('Failed to load admin details.');
+            notify('Failed to load admin details.');
         }
     };
 
@@ -763,7 +764,7 @@ const Admin = () => {
             : [];
 
         if (!editingAdminId && !String(adminForm.enrolment_number).trim()) {
-            alert('Please enter a valid enrollment number.');
+            notify('Please enter a valid enrollment number.');
             return;
         }
 
@@ -771,13 +772,13 @@ const Admin = () => {
         try {
             if (editingAdminId) {
                 await adminsService.updateAdminPermissions(editingAdminId, payloadPermissionIds);
-                alert('Admin permissions updated successfully!');
+                notify('Admin permissions updated successfully!');
             } else {
                 await adminsService.addAdmin({
                     enrolment_number: String(adminForm.enrolment_number).trim(),
                     permission_ids: payloadPermissionIds,
                 });
-                alert('Admin added successfully!');
+                notify('Admin added successfully!');
             }
 
             await fetchAdmins();
@@ -786,7 +787,7 @@ const Admin = () => {
             setAdminForm({ enrolment_number: '', permission_ids: [] });
         } catch (error) {
             console.error('Failed to save admin', error);
-            alert('Failed to save admin. Please verify enrollment number and permissions.');
+            notify('Failed to save admin. Please verify enrollment number and permissions.');
         } finally {
             setAdminSaving(false);
         }
@@ -799,10 +800,10 @@ const Admin = () => {
         try {
             await adminsService.deleteAdmin(admin.user_id);
             setAdmins((prev) => prev.filter((item) => String(item.user_id) !== String(admin.user_id)));
-            alert('Admin removed successfully!');
+            notify('Admin removed successfully!');
         } catch (error) {
             console.error('Failed to delete admin', error);
-            alert('Failed to remove admin access.');
+            notify('Failed to remove admin access.');
         }
     };
 
@@ -819,9 +820,9 @@ const Admin = () => {
             setClubSaving(true);
             const logoUrl = await uploadImageToCDN(file);
             setClubForm(prev => ({ ...prev, logo_url: logoUrl }));
-            alert("Logo uploaded successfully!");
+            notify("Logo uploaded successfully!");
         } catch (err) {
-            alert("Failed to upload logo. Please try again.");
+            notify("Failed to upload logo. Please try again.");
         } finally {
             setClubSaving(false);
         }
@@ -844,10 +845,10 @@ const Admin = () => {
         try {
             if (editingClubId) {
                 await clubsService.updateClub(editingClubId, clubForm);
-                alert('Club updated successfully!');
+                notify('Club updated successfully!');
             } else {
                 await clubsService.createClub(clubForm);
-                alert('Club created successfully!');
+                notify('Club created successfully!');
             }
             
             mutate('all_clubs');
@@ -866,7 +867,7 @@ const Admin = () => {
             setShowClubModal(false);
         } catch (error) {
             console.error('Failed to save club', error);
-            alert('Failed to save club.');
+            notify('Failed to save club.');
         } finally {
             setClubSaving(false);
         }

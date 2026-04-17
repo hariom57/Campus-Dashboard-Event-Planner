@@ -11,6 +11,7 @@ import eventReminderService from '../services/eventReminders';
 import todoService from '../services/todo';
 
 import { useAuth } from '../context/AuthContext';
+import { notify } from '../services/notify';
 import './Home.css';
 
 
@@ -254,19 +255,13 @@ const Home = () => {
         setReminderEventIds(new Set(eventReminderService.getReminderIds()));
 
         if (result.error === 'unsupported') {
-            window.alert('Notifications are not supported on this browser.');
-        }
-
-        if (result.error === 'permission-denied') {
-            window.alert('Please allow notifications in browser settings to get reminders.');
-        }
-
-        if (result.error === 'event-started') {
-            window.alert('This event has already started, so reminders cannot be scheduled.');
-        }
-
-        if (result.error === 'sync-failed') {
-            window.alert('Could not sync reminder to your account right now. Please try again.');
+            notify('Notifications are not supported on this browser.', 'warning');
+        } else if (result.error === 'permission-denied') {
+            notify('Please allow notifications in browser settings to get reminders.', 'warning');
+        } else if (result.error === 'event-started') {
+            notify('This event has already started, so reminders cannot be scheduled.', 'warning');
+        } else if (result.error === 'sync-failed') {
+            notify('Could not sync reminder to your account right now. Please try again.', 'error');
         }
     };
 
