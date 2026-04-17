@@ -58,13 +58,14 @@ const getDurationLabel = (mins) => {
     return m ? `${h}h ${m}m` : `${h} Hour${h > 1 ? 's' : ''}`;
 };
 
-// Build a 14-day strip starting from today
-const buildWeekStrip = () => {
+// Build a 14-day strip starting from an anchor date
+const buildWeekStrip = (anchorDate) => {
     const days = [];
-    const today = new Date();
+    const start = new Date(anchorDate);
+    start.setHours(0, 0, 0, 0);
     for (let i = 0; i < 14; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
         days.push(d);
     }
     return days;
@@ -77,10 +78,11 @@ const CalendarPage = () => {
     const { user } = useAuth();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [viewDate, setViewDate] = useState(new Date()); // For month navigation
+    const [stripAnchorDate, setStripAnchorDate] = useState(() => new Date());
     const [activeCategory, setActiveCategory] = useState('All');
     const [viewMode, setViewMode] = useState('grid'); // 'strip' or 'grid'
 
-    const weekDays = useMemo(() => buildWeekStrip(), []);
+    const weekDays = useMemo(() => buildWeekStrip(stripAnchorDate), [stripAnchorDate]);
 
     const { data: dynamicEvents = [], isLoading: loadDyn } = useSWR(
         user !== undefined ? 'cal_dynamic' : null,
@@ -201,6 +203,8 @@ const CalendarPage = () => {
     const changeMonth = (offset) => {
         const next = new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1);
         setViewDate(next);
+        setStripAnchorDate(next);
+        setSelectedDate(next);
     };
 
     // Pre-calculate event map for grid (using local comparison)
