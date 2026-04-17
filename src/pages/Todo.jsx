@@ -17,6 +17,7 @@ const Todo = () => {
 
     useEffect(() => {
         localStorage.setItem('iitr_show_feed_todos', showInFeed);
+        window.dispatchEvent(new Event('iitr:todo-feed-toggle-changed'));
     }, [showInFeed]);
 
     const { data: todosData, error: loadError, isLoading, mutate } = useSWR(

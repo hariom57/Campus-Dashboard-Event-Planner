@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     LayoutDashboard, Plus, Calendar, Settings, Users,
     X, Check, Loader, Edit, Trash2, ShieldAlert, MapPin, Tags
@@ -89,6 +89,43 @@ const Admin = () => {
     const canManageClubs = user?.canManageClubs || false;
     const canManageSomeClubs = canManageClubs || managedClubIds.length > 0;
     const hasAdminPanelAccess = isAdmin || managedClubIds.length > 0;
+
+    const activeStat = useMemo(() => {
+        const statByTab = {
+            events: {
+                value: events.length,
+                label: 'Events Managed',
+                icon: <Calendar size={24} />,
+            },
+            locations: {
+                value: locations.length,
+                label: 'Locations Managed',
+                icon: <MapPin size={24} />,
+            },
+            categories: {
+                value: categories.length,
+                label: 'Categories Managed',
+                icon: <Tags size={24} />,
+            },
+            admins: {
+                value: admins.length,
+                label: 'Admins Managed',
+                icon: <Users size={24} />,
+            },
+            'club-admins': {
+                value: clubAdmins.length,
+                label: 'Club Admins Managed',
+                icon: <Users size={24} />,
+            },
+            'manage-clubs': {
+                value: managedClubs.length,
+                label: 'Clubs Managed',
+                icon: <LayoutDashboard size={24} />,
+            },
+        };
+
+        return statByTab[activeTab] || statByTab.events;
+    }, [activeTab, events.length, locations.length, categories.length, admins.length, clubAdmins.length, managedClubs.length]);
 
     const [newEvent, setNewEvent] = useState({
         name: '',
@@ -938,11 +975,11 @@ const Admin = () => {
                 <div className="stats-grid grid-4 stagger">
                     <div className="stat-card card animate-fade-in">
                         <div className="stat-icon" style={{ background: 'rgba(113, 51, 100, 0.1)', color: 'var(--brand-purple)' }}>
-                            <Calendar size={24} />
+                            {activeStat.icon}
                         </div>
                         <div>
-                            <h3>{events.length}</h3>
-                            <p>Events Managed</p>
+                            <h3>{activeStat.value}</h3>
+                            <p>{activeStat.label}</p>
                         </div>
                     </div>
                 </div>

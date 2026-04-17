@@ -38,9 +38,26 @@ const Home = () => {
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
+    const [showTodosInFeed, setShowTodosInFeed] = useState(() => localStorage.getItem('iitr_show_feed_todos') === 'true');
     const [reminderEventIds, setReminderEventIds] = useState(() => new Set(eventReminderService.getReminderIds()));
     const sentinelRef = useRef(null);
     const PAGE_SIZE = 10;
+
+    useEffect(() => {
+        const syncTodoFeedPref = () => {
+            setShowTodosInFeed(localStorage.getItem('iitr_show_feed_todos') === 'true');
+        };
+
+        window.addEventListener('focus', syncTodoFeedPref);
+        window.addEventListener('storage', syncTodoFeedPref);
+        window.addEventListener('iitr:todo-feed-toggle-changed', syncTodoFeedPref);
+
+        return () => {
+            window.removeEventListener('focus', syncTodoFeedPref);
+            window.removeEventListener('storage', syncTodoFeedPref);
+            window.removeEventListener('iitr:todo-feed-toggle-changed', syncTodoFeedPref);
+        };
+    }, []);
 
     const { data: pageData, size, setSize, isLoading: dynLoading, isValidating: dynValidating } = useSWRInfinite(
         (pageIndex, previousPageData) => {
@@ -84,7 +101,7 @@ const Home = () => {
     );
 
     const { data: rawTodos = [] } = useSWR(
-        (user && !authLoading && localStorage.getItem('iitr_show_feed_todos') === 'true') ? 'cal_todos' : null,
+        (user && !authLoading && showTodosInFeed) ? 'cal_todos' : null,
         () => todoService.getAll()
     );
 
@@ -167,7 +184,7 @@ const Home = () => {
                 return eventEndDateStr >= todayStr;
             })
             .sort((a, b) => new Date(a.tentative_start_time) - new Date(b.tentative_start_time));
-    }, [dynamicEvents, academicEvents]);
+            }, [dynamicEvents, academicEvents, todoEvents]);
 
     const availableCategories = useMemo(() => {
         const set = new Set();
