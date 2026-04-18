@@ -68,13 +68,15 @@ const Navbar = () => {
                                         className="btn-icon nav-action-btn notification-btn"
                                         onClick={() => setShowNotifications(!showNotifications)}
                                         title="Notifications"
+                                        aria-expanded={showNotifications}
+                                        aria-haspopup="menu"
                                     >
                                         <Bell size={20} fill={notifications.length > 0 ? "var(--yellow)" : "none"} />
                                         {notifications.length > 0 && <span className="notification-dot">{notifications.length}</span>}
                                     </button>
 
                                     {showNotifications && (
-                                        <div className="avatar-dropdown glass" style={{ right: '-50px', width: '300px', padding: '0' }}>
+                                        <div className="notification-panel glass" role="menu" style={{ right: '-50px', width: '300px', padding: '0' }}>
                                             <div className="dropdown-header" style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
                                                 <h4 style={{ margin: 0, fontSize: '0.95rem' }}>Your Reminders</h4>
                                             </div>

@@ -248,6 +248,16 @@
     transition: var(--transition-base);
 }
 
+.notification-panel {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: 300px;
+    padding: 0;
+    border-radius: var(--radius-lg);
+    z-index: 1101;
+}
+
 .user-avatar-container:hover .avatar-dropdown {
     opacity: 1;
     visibility: visible;

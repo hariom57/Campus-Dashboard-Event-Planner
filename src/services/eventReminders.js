@@ -396,11 +396,28 @@ const eventReminderService = {
         const normalized = normalizeEvent(event, subscriptions[String(event?.id)]?.offsetsMinutes);
         if (!normalized) return;
 
-        if (!subscriptions[normalized.id]) return;
+        const current = subscriptions[normalized.id];
+        if (!current) return;
 
-        subscriptions[normalized.id] = normalized;
+        const currentOffsets = normalizeOffsetsMinutes(current.offsetsMinutes);
+        const nextOffsets = normalizeOffsetsMinutes(normalized.offsetsMinutes);
+        const isSameSnapshot =
+            String(current.name || '') === String(normalized.name || '')
+            && String(current.tentative_start_time || '') === String(normalized.tentative_start_time || '')
+            && String(current.location_name || '') === String(normalized.location_name || '')
+            && String(current.club_name || '') === String(normalized.club_name || '')
+            && currentOffsets.length === nextOffsets.length
+            && currentOffsets.every((offset, index) => offset === nextOffsets[index]);
+
+        if (isSameSnapshot) return;
+
+        subscriptions[normalized.id] = {
+            ...current,
+            ...normalized,
+            offsetsMinutes: nextOffsets,
+        };
         setSubscriptions(subscriptions);
-        scheduleEvent(normalized);
+        scheduleEvent(subscriptions[normalized.id]);
     },
 
     toggleReminder: async (event) => {

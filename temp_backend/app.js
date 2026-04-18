@@ -104,15 +104,6 @@ app.use((req, res, next) => {
 
 // SECURITY: Add rate limiting if available
 if (rateLimit && rateLimit.toString() !== 'function () { return (req, res, next) => next(); }') {
-    // General rate limiter: 100 requests per 15 minutes
-    const generalLimiter = rateLimit({
-        windowMs: 15 * 60 * 1000,
-        max: 100,
-        message: 'Too many requests from this IP, please try again later.',
-        standardHeaders: true,
-        legacyHeaders: false,
-    });
-
     // Stricter limit for auth endpoints: 5 requests per 15 minutes
     const authLimiter = rateLimit({
         windowMs: 15 * 60 * 1000,
@@ -123,11 +114,23 @@ if (rateLimit && rateLimit.toString() !== 'function () { return (req, res, next)
         legacyHeaders: false,
     });
 
+    // General write limiter: protects mutating endpoints without throttling normal page reads
+    const writeLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 100,
+        message: 'Too many requests from this IP, please try again later.',
+        standardHeaders: true,
+        legacyHeaders: false,
+    });
+
     app.use('/oauth', authLimiter);
     app.use((req, res, next) => {
-        // Skip rate limiting for health checks
-        if (req.path === '/health') return next();
-        generalLimiter(req, res, next);
+        // Skip rate limiting for health checks and all read-only GET traffic.
+        if (req.path === '/health' || req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+            return next();
+        }
+
+        writeLimiter(req, res, next);
     });
 }
 

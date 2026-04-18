@@ -220,29 +220,31 @@ const Home = () => {
         ));
     };
 
-    const filteredEvents = events.filter((ev) => {
-    const eventCategoryNames = extractCategoryNames(ev);
-    
-    const eventClubId = Number(ev.club_id);
-    const isHiddenClub = notPreferredClubIds.has(eventClubId);
+    const filteredEvents = useMemo(() => {
+        return events.filter((ev) => {
+            const eventCategoryNames = extractCategoryNames(ev);
 
-    const matchesCategorySelection =
-        selectedCategories.length === 0
-        || selectedCategories.some((selected) => eventCategoryNames.includes(selected));
+            const eventClubId = Number(ev.club_id);
+            const isHiddenClub = notPreferredClubIds.has(eventClubId);
 
-    const matchesSearch =
-        !searchQuery
-        || ev.name.toLowerCase().includes(searchQuery.toLowerCase())
-        || (ev.club_name && ev.club_name.toLowerCase().includes(searchQuery.toLowerCase()))
-        || (ev.location_name && ev.location_name.toLowerCase().includes(searchQuery.toLowerCase())); 
+            const matchesCategorySelection =
+                selectedCategories.length === 0
+                || selectedCategories.some((selected) => eventCategoryNames.includes(selected));
 
-    // Always show todo events if their category matches, they aren't bound to club preferences
-    if (ev.isTodoEvent) {
-        return matchesCategorySelection && matchesSearch;
-    }
+            const matchesSearch =
+                !searchQuery
+                || ev.name.toLowerCase().includes(searchQuery.toLowerCase())
+                || (ev.club_name && ev.club_name.toLowerCase().includes(searchQuery.toLowerCase()))
+                || (ev.location_name && ev.location_name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    return matchesCategorySelection && !isHiddenClub && matchesSearch; 
-});
+            // Always show todo events if their category matches, they aren't bound to club preferences
+            if (ev.isTodoEvent) {
+                return matchesCategorySelection && matchesSearch;
+            }
+
+            return matchesCategorySelection && !isHiddenClub && matchesSearch;
+        });
+    }, [events, notPreferredClubIds, selectedCategories, searchQuery]);
 
     useEffect(() => {
         filteredEvents.forEach((event) => {

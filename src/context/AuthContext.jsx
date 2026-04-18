@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import authService from '../services/auth';
 import eventReminderService from '../services/eventReminders';
 
@@ -7,12 +7,16 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [notifications, setNotifications] = useState([]);
     const [backendSlow, setBackendSlow] = useState(false);
+    const [notificationVersion, setNotificationVersion] = useState(0);
 
-    const refreshNotifications = useCallback(() => {
+    const syncNotifications = useCallback(() => {
+        setNotificationVersion((version) => version + 1);
+    }, []);
+
+    const notifications = useMemo(() => {
         const entries = eventReminderService.getReminderEntries();
-        const mapped = entries.map((entry) => ({
+        return entries.map((entry) => ({
             id: String(entry.id),
             title: entry.name,
             time: new Date(entry.tentative_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -20,22 +24,21 @@ export const AuthProvider = ({ children }) => {
             tentative_start_time: entry.tentative_start_time,
             offsetsMinutes: entry.offsetsMinutes,
         }));
-        setNotifications(mapped);
-    }, []);
+    }, [notificationVersion]);
 
     useEffect(() => {
         const onStorage = (event) => {
             if (event.key === 'event-reminder-subscriptions-v1' || event.key === null) {
-                refreshNotifications();
+                syncNotifications();
             }
         };
 
         const onFocus = () => {
-            refreshNotifications();
+            syncNotifications();
         };
 
         const onRemindersUpdated = () => {
-            refreshNotifications();
+            syncNotifications();
         };
 
         window.addEventListener('storage', onStorage);
@@ -73,7 +76,7 @@ export const AuthProvider = ({ children }) => {
                 }
 
                 eventReminderService.scheduleStoredReminders();
-                refreshNotifications();
+                syncNotifications();
             } catch (error) {
                 // Identity fetch failed (401) is the expected path for logged-out users
                 const status = error?.response?.status;
@@ -82,14 +85,15 @@ export const AuthProvider = ({ children }) => {
                 if (isMounted) {
                     setUser(null);
                     if (isUnauthorized) {
-                        setNotifications([]);
+                        setNotificationVersion(0);
                     } else {
-                        refreshNotifications();
+                        syncNotifications();
                     }
                 }
 
                 if (isUnauthorized) {
                     eventReminderService.clearLocalCache();
+                    setNotificationVersion(0);
                 }
             } finally {
                 clearTimeout(slowTimer);
@@ -109,7 +113,7 @@ export const AuthProvider = ({ children }) => {
             window.removeEventListener('focus', onFocus);
             window.removeEventListener('event-reminders-updated', onRemindersUpdated);
         };
-    }, [refreshNotifications]);
+    }, [syncNotifications]);
 
     const toggleNotification = async (event) => {
         const eventId = String(event?.id || '');
@@ -120,12 +124,12 @@ export const AuthProvider = ({ children }) => {
             .find((entry) => String(entry.id) === eventId);
 
         if (!reminder) {
-            refreshNotifications();
+            syncNotifications();
             return;
         }
 
         await eventReminderService.toggleReminder(reminder);
-        refreshNotifications();
+        syncNotifications();
     };
 
     const login = () => {
@@ -136,7 +140,7 @@ export const AuthProvider = ({ children }) => {
         authService.logout();
         eventReminderService.clearLocalCache();
         setUser(null);
-        setNotifications([]);
+        setNotificationVersion(0);
     };
 
     const updateUserPreferences = (nextPrefs) => {

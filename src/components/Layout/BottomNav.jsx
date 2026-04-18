@@ -5,8 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import './BottomNav.css';
 
 const BottomNav = () => {
-    const { user, notifications } = useAuth();
-    const hasAlerts = notifications && notifications.length > 0;
+    const { user } = useAuth();
     const profileImageSrc = user?.display_picture
         ? (user.display_picture.startsWith('http') ? user.display_picture : `https://channeli.in${user.display_picture}`)
         : null;
@@ -43,7 +42,6 @@ const BottomNav = () => {
                     ) : (
                         <div className="bottom-nav-avatar-fallback">{profileInitial}</div>
                     )}
-                    {hasAlerts && <span className="bottom-nav-badge">{notifications.length}</span>}
                 </div>
                 <span>Profile</span>
             </NavLink>
