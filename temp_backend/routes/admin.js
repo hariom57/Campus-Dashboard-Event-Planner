@@ -4,55 +4,34 @@ const router = express.Router();
 const { User, AdminPermission, AdminPermissionAlloted, sequelize } = require('../database/schemas');
 const { checkManageAdminsPermission } = require('../middlewares/permissions/manageAdmins');
 
+const formatAdminWithPermissions = (userRecord) => {
+    if (!userRecord) return null;
+
+    const permissions = Array.isArray(userRecord.AdminPermissions)
+        ? userRecord.AdminPermissions.map((permission) => ({
+            id: permission.id,
+            name: permission.name,
+        }))
+        : [];
+
+    return {
+        user_id: userRecord.user_id,
+        full_name: userRecord.full_name,
+        email: userRecord.email,
+        enrolment_number: userRecord.enrolment_number,
+        permissions,
+    };
+};
+
 // Protected route to get all admins with their permissions
 router.get('/all', checkManageAdminsPermission, async (req, res) => {
     try {
-        // const admins = await sql`
-        // 	SELECT
-        // 		u.user_id,
-        // 		u.full_name,
-        // 		u.email,
-        // 		COALESCE(
-        // 			json_agg(
-        // 				json_build_object(
-        // 					'id', ap.id,
-        // 					'name', ap.name
-        // 				)
-        // 			) FILTER (WHERE ap.id IS NOT NULL),
-        // 			'[]'::json
-        // 		) AS permissions
-        // 	FROM "user" u
-        // 	INNER JOIN admin_permission_alloted apa ON apa.user_id = u.user_id
-        // 	LEFT JOIN admin_permission ap ON ap.id = apa.admin_permission_id
-        // 	GROUP BY u.user_id, u.full_name, u.email
-        // 	ORDER BY u.full_name ASC
-        // `;
-
-        const admins = await User.findAll({
-            attributes: [
-                'user_id',
-                'full_name',
-                'email',
-                'enrolment_number',
-                [
-                    sequelize.literal(`
-                        COALESCE(
-                            json_agg(
-                                json_build_object(
-                                    'id', "AdminPermissions"."id",
-                                    'name', "AdminPermissions"."name"
-                                )
-                            ) FILTER (WHERE "AdminPermissions"."id" IS NOT NULL),
-                            '[]'::json
-                        )
-                    `),
-                    'permissions'
-                ],
-            ],
+        const adminRows = await User.findAll({
+            attributes: ['user_id', 'full_name', 'email', 'enrolment_number'],
             include: [
                 {
                     model: AdminPermission,
-                    attributes: [],
+                    attributes: ['id', 'name'],
                     through: {
                         model: AdminPermissionAlloted,
                         attributes: [],
@@ -60,10 +39,10 @@ router.get('/all', checkManageAdminsPermission, async (req, res) => {
                     required: true,
                 },
             ],
-            group: ['User.user_id', 'User.full_name', 'User.email', 'User.enrolment_number'],
-            order: [[sequelize.literal('"User"."full_name"'), 'ASC']],
-            raw: true,
+            order: [['full_name', 'ASC']],
         });
+
+        const admins = adminRows.map(formatAdminWithPermissions);
 
         res.json({ admins });
     } catch (error) {
@@ -80,52 +59,12 @@ router.get('/:userId', checkManageAdminsPermission, async (req, res) => {
     const { userId } = req.params;
 
     try {
-        // const admins = await sql`
-        // 	SELECT
-        // 		u.user_id,
-        // 		u.full_name,
-        // 		u.email,
-        // 		COALESCE(
-        // 			json_agg(
-        // 				json_build_object(
-        // 					'id', ap.id,
-        // 					'name', ap.name
-        // 				)
-        // 			) FILTER (WHERE ap.id IS NOT NULL),
-        // 			'[]'::json
-        // 		) AS permissions
-        // 	FROM "user" u
-        // 	LEFT JOIN admin_permission_alloted apa ON apa.user_id = u.user_id
-        // 	LEFT JOIN admin_permission ap ON ap.id = apa.admin_permission_id
-        // 	WHERE u.user_id = ${userId}
-        // 	GROUP BY u.user_id, u.full_name, u.email
-        // `;
-
         const admin = await User.findByPk(userId, {
-            attributes: [
-                'user_id',
-                'full_name',
-                'email',
-                'enrolment_number',
-                [
-                    sequelize.literal(`
-                        COALESCE(
-                            json_agg(
-                                json_build_object(
-                                    'id', "AdminPermissions"."id",
-                                    'name', "AdminPermissions"."name"
-                                )
-                            ) FILTER (WHERE "AdminPermissions"."id" IS NOT NULL),
-                            '[]'::json
-                        )
-                    `),
-                    'permissions'
-                ],
-            ],
+            attributes: ['user_id', 'full_name', 'email', 'enrolment_number'],
             include: [
                 {
                     model: AdminPermission,
-                    attributes: [],
+                    attributes: ['id', 'name'],
                     through: {
                         model: AdminPermissionAlloted,
                         attributes: [],
@@ -133,8 +72,6 @@ router.get('/:userId', checkManageAdminsPermission, async (req, res) => {
                     required: false,
                 },
             ],
-            group: ['User.user_id'],
-            raw: true,
         });
 
         // if (!admins || admins.length === 0) {
@@ -153,7 +90,7 @@ router.get('/:userId', checkManageAdminsPermission, async (req, res) => {
             });
         }
 
-        res.json({ admin });
+        res.json({ admin: formatAdminWithPermissions(admin) });
     } catch (error) {
         console.error('Error fetching admin:', error);
         res.status(500).json({

@@ -11,7 +11,7 @@ const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
-    const { user, login, logout, notifications, toggleNotification } = useAuth();
+    const { user, logout, notifications, toggleNotification } = useAuth();
     const location = useLocation();
 
     const isActive = (path) => location.pathname === path;
@@ -92,7 +92,10 @@ const Navbar = () => {
                                                             </div>
                                                             <button
                                                                 className="btn-icon-sm"
-                                                                onClick={(e) => { e.stopPropagation(); toggleNotification({ id: notif.id }); }}
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    await toggleNotification({ id: notif.id });
+                                                                }}
                                                                 title="Remove Reminder"
                                                             >
                                                                 <X size={14} color="var(--red)" />

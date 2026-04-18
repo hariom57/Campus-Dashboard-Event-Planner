@@ -1,5 +1,6 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import authService from '../services/auth';
+import eventReminderService from '../services/eventReminders';
 
 const AuthContext = createContext(null);
 
@@ -9,12 +10,37 @@ export const AuthProvider = ({ children }) => {
     const [notifications, setNotifications] = useState([]);
     const [backendSlow, setBackendSlow] = useState(false);
 
+    const refreshNotifications = useCallback(() => {
+        const entries = eventReminderService.getReminderEntries();
+        const mapped = entries.map((entry) => ({
+            id: String(entry.id),
+            title: entry.name,
+            time: new Date(entry.tentative_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            date: new Date(entry.tentative_start_time).toLocaleDateString('en-IN'),
+            tentative_start_time: entry.tentative_start_time,
+            offsetsMinutes: entry.offsetsMinutes,
+        }));
+        setNotifications(mapped);
+    }, []);
+
     useEffect(() => {
-        // Load notifications from local storage if available
-        const savedNotifs = localStorage.getItem('iitr_notifications');
-        if (savedNotifs) {
-            try { setNotifications(JSON.parse(savedNotifs)); } catch (e) { }
-        }
+        const onStorage = (event) => {
+            if (event.key === 'event-reminder-subscriptions-v1' || event.key === null) {
+                refreshNotifications();
+            }
+        };
+
+        const onFocus = () => {
+            refreshNotifications();
+        };
+
+        const onRemindersUpdated = () => {
+            refreshNotifications();
+        };
+
+        window.addEventListener('storage', onStorage);
+        window.addEventListener('focus', onFocus);
+        window.addEventListener('event-reminders-updated', onRemindersUpdated);
 
         // Track if component is mounted to prevent state updates after unmount
         let isMounted = true;
@@ -45,10 +71,25 @@ export const AuthProvider = ({ children }) => {
                         notPreferredCategories: Array.isArray(userData?.notPreferredCategories) ? userData.notPreferredCategories : [],
                     });
                 }
+
+                eventReminderService.scheduleStoredReminders();
+                refreshNotifications();
             } catch (error) {
                 // Identity fetch failed (401) is the expected path for logged-out users
+                const status = error?.response?.status;
+                const isUnauthorized = status === 401 || status === 403;
+
                 if (isMounted) {
                     setUser(null);
+                    if (isUnauthorized) {
+                        setNotifications([]);
+                    } else {
+                        refreshNotifications();
+                    }
+                }
+
+                if (isUnauthorized) {
+                    eventReminderService.clearLocalCache();
                 }
             } finally {
                 clearTimeout(slowTimer);
@@ -64,29 +105,27 @@ export const AuthProvider = ({ children }) => {
         // Cleanup function to mark component as unmounted
         return () => {
             isMounted = false;
+            window.removeEventListener('storage', onStorage);
+            window.removeEventListener('focus', onFocus);
+            window.removeEventListener('event-reminders-updated', onRemindersUpdated);
         };
-    }, []);
+    }, [refreshNotifications]);
 
-    // Effect to auto-save notifications when changed
-    useEffect(() => {
-        localStorage.setItem('iitr_notifications', JSON.stringify(notifications));
-    }, [notifications]);
+    const toggleNotification = async (event) => {
+        const eventId = String(event?.id || '');
+        if (!eventId) return;
 
-    const toggleNotification = (event) => {
-        setNotifications(prev => {
-            const exists = prev.find(n => n.id === event.id);
-            if (exists) {
-                return prev.filter(n => n.id !== event.id);
-            } else {
-                return [...prev, {
-                    id: event.id,
-                    title: event.title,
-                    time: event.time,
-                    date: event.date || new Date().toLocaleDateString(),
-                    addedAt: new Date().toISOString()
-                }];
-            }
-        });
+        const reminder = eventReminderService
+            .getReminderEntries()
+            .find((entry) => String(entry.id) === eventId);
+
+        if (!reminder) {
+            refreshNotifications();
+            return;
+        }
+
+        await eventReminderService.toggleReminder(reminder);
+        refreshNotifications();
     };
 
     const login = () => {
@@ -95,7 +134,9 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         authService.logout();
+        eventReminderService.clearLocalCache();
         setUser(null);
+        setNotifications([]);
     };
 
     const updateUserPreferences = (nextPrefs) => {

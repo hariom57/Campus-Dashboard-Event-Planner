@@ -2,6 +2,7 @@ import remindersService from './reminders';
 
 const STORAGE_KEY = 'event-reminder-subscriptions-v1';
 const SENT_KEY = 'event-reminder-sent-v1';
+const REMINDERS_UPDATED_EVENT = 'event-reminders-updated';
 const DEFAULT_REMINDER_OFFSETS_MINUTES = [30, 5];
 const MAX_TIMEOUT_MS = 2147483647;
 const CHECK_INTERVAL_MS = 20 * 1000;
@@ -10,6 +11,7 @@ const DUE_WINDOW_MS = 2 * 60 * 1000;
 const timerMap = new Map();
 let monitorIntervalId = null;
 let monitorWired = false;
+let syncRequestCounter = 0;
 
 const parseJson = (value, fallback) => {
     try {
@@ -20,6 +22,11 @@ const parseJson = (value, fallback) => {
     }
 };
 
+const emitRemindersUpdated = () => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent(REMINDERS_UPDATED_EVENT));
+};
+
 const getSubscriptions = () => {
     if (typeof window === 'undefined') return {};
     return parseJson(localStorage.getItem(STORAGE_KEY), {});
@@ -27,7 +34,9 @@ const getSubscriptions = () => {
 
 const setSubscriptions = (subscriptions) => {
     if (typeof window === 'undefined') return;
+    syncRequestCounter += 1;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(subscriptions));
+    emitRemindersUpdated();
 };
 
 const getSentMap = () => {
@@ -142,6 +151,15 @@ const clearSentKeysForOffsets = (eventId, offsetsMinutes) => {
         delete sentMap[reminderKey(eventId, offsetMinutes)];
     });
     setSentMap(sentMap);
+};
+
+const clearAllTimers = () => {
+    Array.from(timerMap.values()).forEach((timer) => {
+        if (timer) {
+            clearTimeout(timer);
+        }
+    });
+    timerMap.clear();
 };
 
 const markSent = (eventId, offsetMinutes) => {
@@ -352,16 +370,25 @@ const eventReminderService = {
         checkAndFireDueReminders();
 
         // Refresh from backend for cross-device persistence.
+        const requestId = ++syncRequestCounter;
         remindersService.getAll()
             .then((remoteEntries) => {
+                if (requestId !== syncRequestCounter) return;
                 mergeRemoteSubscriptions(remoteEntries);
                 const subscriptions = getSubscriptions();
                 Object.values(subscriptions).forEach((event) => scheduleEvent(event));
                 checkAndFireDueReminders();
             })
             .catch((error) => {
+                if (requestId !== syncRequestCounter) return;
                 console.warn('Could not sync reminders from server, using local cache:', error?.message || error);
             });
+    },
+
+    clearLocalCache: () => {
+        clearAllTimers();
+        setSubscriptions({});
+        setSentMap({});
     },
 
     updateReminderSnapshot: (event) => {
@@ -388,7 +415,7 @@ const eventReminderService = {
             if (isServerPersistableEventId(normalized.id)) {
                 try {
                     await remindersService.disable(normalized.id);
-                } catch (error) {
+                } catch {
                     return { enabled: true, error: 'sync-failed' };
                 }
             }
@@ -423,7 +450,7 @@ const eventReminderService = {
                     normalized.club_name = persisted.club_name || normalized.club_name;
                     normalized.offsetsMinutes = normalizeOffsetsMinutes(persisted.offsetsMinutes);
                 }
-            } catch (error) {
+            } catch {
                 return { enabled: false, error: 'sync-failed' };
             }
         }
@@ -473,7 +500,7 @@ const eventReminderService = {
                     normalized.club_name = persisted.club_name || normalized.club_name;
                     normalized.offsetsMinutes = normalizeOffsetsMinutes(persisted.offsetsMinutes);
                 }
-            } catch (error) {
+            } catch {
                 return { enabled: false, error: 'sync-failed' };
             }
         }

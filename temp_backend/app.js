@@ -158,22 +158,18 @@ app.use('/todos', require('./routes/todo.js'));
 app.use('/reminders', require('./routes/reminder.js'));
 
 app.get('/', async (_, res) => {
-
-    // const response = await sql`SELECT version();`;
-    // console.log(response);
-
-    // res.json({ version: response[0].version });
-
     try {
-        const response = await sequelize.query('SELECT version();');
-        console.log(response);
-
-        res.json({ version: response[0][0].version });
+        await sequelize.authenticate();
+        res.json({
+            status: 'ok',
+            database: 'connected',
+            timestamp: new Date().toISOString(),
+        });
     } catch (error) {
-        console.error('Error checking database version:', error);
+        console.error('Error checking database connectivity:', error);
         res.status(500).json({
             error: 'Internal server error',
-            message: 'Could not fetch database version'
+            message: 'Could not verify database connectivity'
         });
     }
 });

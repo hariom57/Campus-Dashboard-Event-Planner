@@ -49,11 +49,17 @@ const NotificationsPage = () => {
             }
         };
 
+        const onRemindersUpdated = () => {
+            refreshReminders();
+        };
+
         window.addEventListener('storage', onStorage);
         window.addEventListener('focus', refreshReminders);
+        window.addEventListener('event-reminders-updated', onRemindersUpdated);
         return () => {
             window.removeEventListener('storage', onStorage);
             window.removeEventListener('focus', refreshReminders);
+            window.removeEventListener('event-reminders-updated', onRemindersUpdated);
         };
     }, []);
 
@@ -126,7 +132,7 @@ const NotificationsPage = () => {
                     </div>
                     <h2>Track every event you are watching</h2>
                     <p>
-                        Manage the reminder offsets for each event from one place. These notifications are stored locally in your browser.
+                        Manage reminder offsets for each event from one place. Reminders are synced to your account and cached locally for reliability.
                     </p>
                 </div>
                 <div className="notifications-hero-stats">

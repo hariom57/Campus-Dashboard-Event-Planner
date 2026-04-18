@@ -1,9 +1,8 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { SWRConfig } from 'swr';
 import { AuthProvider } from './context/AuthContext';
 import BottomNav from './components/Layout/BottomNav';
-import eventReminderService from './services/eventReminders';
 import Home from './pages/Home';
 import CalendarPage from './pages/Calendar';
 import Admin from './pages/Admin';
@@ -29,10 +28,6 @@ const AppShell = ({ children }) => {
 };
 
 function App() {
-    useEffect(() => {
-        eventReminderService.scheduleStoredReminders();
-    }, []);
-
     return (
         <Router>
             <SWRConfig 

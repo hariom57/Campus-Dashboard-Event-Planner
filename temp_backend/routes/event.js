@@ -36,6 +36,12 @@ const buildPaginationMeta = (count, page, limit) => ({
     totalPages: Math.max(1, Math.ceil(count / limit))
 });
 
+const startOfToday = () => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return now;
+};
+
 const normalizeCategoryIds = (categoryIds) => {
     if (!Array.isArray(categoryIds)) return [];
 
@@ -335,7 +341,7 @@ router.get('/venue/:venue_id', userLoggedIn, async (req, res) => {
             where: {
                 location_id: venue_id,
                 tentative_start_time: {
-                    [Op.gte]: sequelize.literal('CURRENT_DATE')
+                    [Op.gte]: startOfToday()
                 }
             },
             order: [['tentative_start_time', 'DESC']],
@@ -564,7 +570,7 @@ router.get('/clubs/not-preferred', userData, async (req, res) => {
             where: {
                 club_id: notPreferredClubIds.length > 0 ? { [Op.in]: notPreferredClubIds } : { [Op.eq]: null },
                 tentative_start_time: {
-                    [Op.gte]: sequelize.literal('CURRENT_DATE')
+                    [Op.gte]: startOfToday()
                 }
             },
             order: [['tentative_start_time', 'DESC']],
@@ -629,7 +635,7 @@ router.get('/categories/preferred', userData, async (req, res) => {
             where: {
                 id: eventIdList.length > 0 ? { [Op.in]: eventIdList } : { [Op.eq]: null },
                 tentative_start_time: {
-                    [Op.gte]: sequelize.literal('CURRENT_DATE')
+                    [Op.gte]: startOfToday()
                 }
             },
             order: [['tentative_start_time', 'DESC']],
@@ -694,7 +700,7 @@ router.get('/categories/not-preferred', userData, async (req, res) => {
             where: {
                 id: eventIdList.length > 0 ? { [Op.in]: eventIdList } : { [Op.eq]: null },
                 tentative_start_time: {
-                    [Op.gte]: sequelize.literal('CURRENT_DATE')
+                    [Op.gte]: startOfToday()
                 }
             },
             order: [['tentative_start_time', 'DESC']],
