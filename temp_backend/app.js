@@ -8,6 +8,17 @@ const cookieParser = require('cookie-parser');
 const { sequelize } = require('./database/schemas');
 const initializeSchema = require('./database/initializeSchema.js');
 
+// SECURITY: Require rate limiting (can be installed with: npm install express-rate-limit)
+// Placeholder - if not installed, create a simple pass-through middleware
+let rateLimit;
+try {
+    rateLimit = require('express-rate-limit');
+} catch (e) {
+    console.warn('express-rate-limit not installed. Rate limiting disabled. Install with: npm install express-rate-limit');
+    // Pass-through middleware
+    rateLimit = () => (req, res, next) => next();
+}
+
 const app = express();
 const PORT = process.env.PORT || 8081;
 
@@ -81,6 +92,44 @@ app.use(
         extended: true,
     })
 );
+
+// SECURITY: Add security headers
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+});
+
+// SECURITY: Add rate limiting if available
+if (rateLimit && rateLimit.toString() !== 'function () { return (req, res, next) => next(); }') {
+    // General rate limiter: 100 requests per 15 minutes
+    const generalLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 100,
+        message: 'Too many requests from this IP, please try again later.',
+        standardHeaders: true,
+        legacyHeaders: false,
+    });
+
+    // Stricter limit for auth endpoints: 5 requests per 15 minutes
+    const authLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 5,
+        message: 'Too many login attempts, please try again later.',
+        skipSuccessfulRequests: true,
+        standardHeaders: true,
+        legacyHeaders: false,
+    });
+
+    app.use('/oauth', authLimiter);
+    app.use((req, res, next) => {
+        // Skip rate limiting for health checks
+        if (req.path === '/health') return next();
+        generalLimiter(req, res, next);
+    });
+}
 
 // routes
 // oauth routes

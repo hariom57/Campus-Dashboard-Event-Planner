@@ -162,7 +162,7 @@ const EventDetail = () => {
     const descriptionWords = event.description ? event.description.split(' ') : [];
     const shortDesc = descriptionWords.slice(0, 40).join(' ');
     const isLong = descriptionWords.length > 40;
-    const canSetReminder = Boolean(event?.tentative_start_time) && !event?.isAllDay;
+    const canSetReminder = Boolean(event?.tentative_start_time); // FIXED: Allow reminders for all-day events (scheduled for night before)
 
     return (
         <div className="event-detail-page">

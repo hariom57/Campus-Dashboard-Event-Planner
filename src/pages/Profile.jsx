@@ -37,6 +37,7 @@ const ProfilePage = () => {
     const [preferences, setPreferences] = useState(emptyPreferences);
     const [saving, setSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
     const [clubSearch, setClubSearch] = useState('');
     const [expandedClubId, setExpandedClubId] = useState(null);
 
@@ -81,6 +82,7 @@ const ProfilePage = () => {
         if (!user) return;
         setSaving(true);
         setSaveMessage('');
+        setErrorMessage('');
 
         try {
             const response = await userService.updatePreferences(preferences);
@@ -90,7 +92,7 @@ const ProfilePage = () => {
             setSaveMessage('Preferences saved successfully.');
         } catch (saveError) {
             console.error('Failed to update preferences', saveError);
-            setError('Could not save preferences. Please try again.');
+            setErrorMessage('Could not save preferences. Please try again.');
         } finally {
             setSaving(false);
         }

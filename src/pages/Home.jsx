@@ -164,7 +164,7 @@ const Home = () => {
 
         observer.observe(sentinel);
         return () => observer.disconnect();
-    }, [hasMore, loadingMore, loading, initialLoaded]);
+    }, [hasMore, loadingMore, loading]); // FIXED: Removed initialLoaded from deps to prevent observer recreation
 
     const events = useMemo(() => {
         const combined = [...dynamicEvents, ...academicEvents, ...todoEvents];

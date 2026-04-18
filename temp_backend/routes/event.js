@@ -539,6 +539,14 @@ router.get('/clubs/not-preferred', userData, async (req, res) => {
     try {
         const { page, limit, offset } = getPaginationParams(req);
 
+        // SECURITY FIX: Fetch user's not preferred clubs as data, not SQL injection
+        const notPreferredClubs = await UserNotPreferredClub.findAll({
+            where: { user_id: req.user.user_id },
+            attributes: ['club_id'],
+            raw: true
+        });
+        const notPreferredClubIds = notPreferredClubs.map(row => row.club_id);
+
         const { rows: events, count } = await Event.findAndCountAll({
             attributes: standardFlatAttributes,
             include: [
@@ -554,9 +562,7 @@ router.get('/clubs/not-preferred', userData, async (req, res) => {
                 }
             ],
             where: {
-                club_id: {
-                    [Op.in]: sequelize.literal(`(SELECT club_id FROM user_not_preferred_club WHERE user_id = ${req.user.user_id})`)
-                },
+                club_id: notPreferredClubIds.length > 0 ? { [Op.in]: notPreferredClubIds } : { [Op.eq]: null },
                 tentative_start_time: {
                     [Op.gte]: sequelize.literal('CURRENT_DATE')
                 }
@@ -588,6 +594,24 @@ router.get('/categories/preferred', userData, async (req, res) => {
     try {
         const { page, limit, offset } = getPaginationParams(req);
 
+        // SECURITY FIX: Fetch user's preferred categories as data, not SQL injection
+        const preferredCategories = await UserPreferredCategory.findAll({
+            where: { user_id: req.user.user_id },
+            attributes: ['event_category_id'],
+            raw: true
+        });
+        
+        const categoryIds = preferredCategories.map(row => row.event_category_id);
+        
+        const eventIds = await EventCategoryAlloted.findAll({
+            where: categoryIds.length > 0 ? { event_category_id: { [Op.in]: categoryIds } } : { [Op.eq]: null },
+            attributes: ['event_id'],
+            raw: true,
+            group: ['event_id'],
+            subQuery: false
+        });
+        const eventIdList = eventIds.map(row => row.event_id);
+
         const { rows: events, count } = await Event.findAndCountAll({
             attributes: standardFlatAttributes,
             include: [
@@ -603,9 +627,7 @@ router.get('/categories/preferred', userData, async (req, res) => {
                 }
             ],
             where: {
-                id: {
-                    [Op.in]: sequelize.literal(`(SELECT DISTINCT event_id FROM event_category_alloted WHERE event_category_id IN (SELECT event_category_id FROM user_preferred_category WHERE user_id = ${req.user.user_id}))`)
-                },
+                id: eventIdList.length > 0 ? { [Op.in]: eventIdList } : { [Op.eq]: null },
                 tentative_start_time: {
                     [Op.gte]: sequelize.literal('CURRENT_DATE')
                 }
@@ -637,6 +659,24 @@ router.get('/categories/not-preferred', userData, async (req, res) => {
     try {
         const { page, limit, offset } = getPaginationParams(req);
 
+        // SECURITY FIX: Fetch user's not preferred categories as data, not SQL injection
+        const notPreferredCategories = await UserNotPreferredCategory.findAll({
+            where: { user_id: req.user.user_id },
+            attributes: ['event_category_id'],
+            raw: true
+        });
+        
+        const categoryIds = notPreferredCategories.map(row => row.event_category_id);
+        
+        const eventIds = await EventCategoryAlloted.findAll({
+            where: categoryIds.length > 0 ? { event_category_id: { [Op.in]: categoryIds } } : { [Op.eq]: null },
+            attributes: ['event_id'],
+            raw: true,
+            group: ['event_id'],
+            subQuery: false
+        });
+        const eventIdList = eventIds.map(row => row.event_id);
+
         const { rows: events, count } = await Event.findAndCountAll({
             attributes: standardFlatAttributes,
             include: [
@@ -652,9 +692,7 @@ router.get('/categories/not-preferred', userData, async (req, res) => {
                 }
             ],
             where: {
-                id: {
-                    [Op.in]: sequelize.literal(`(SELECT DISTINCT event_id FROM event_category_alloted WHERE event_category_id IN (SELECT event_category_id FROM user_not_preferred_category WHERE user_id = ${req.user.user_id}))`)
-                },
+                id: eventIdList.length > 0 ? { [Op.in]: eventIdList } : { [Op.eq]: null },
                 tentative_start_time: {
                     [Op.gte]: sequelize.literal('CURRENT_DATE')
                 }

@@ -8,9 +8,6 @@ const userLoggedIn = (req, res, next) => {
     try {
         const token = req.cookies.auth_token;
 
-        // DEBUG: See if cookies are arriving at all
-        console.log(`[AUTH] Path: ${req.path}, Cookies:`, Object.keys(req.cookies || {}));
-
         if (!token) {
             return res.status(401).json({
                 error: 'No authentication token found',
@@ -18,6 +15,9 @@ const userLoggedIn = (req, res, next) => {
             });
         }
 
+        // CRITICAL FIX: Actually verify the JWT token instead of just checking presence
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
         next();
     } catch (error) {
         console.error('Auth error:', error);

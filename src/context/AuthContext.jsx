@@ -16,39 +16,55 @@ export const AuthProvider = ({ children }) => {
             try { setNotifications(JSON.parse(savedNotifs)); } catch (e) { }
         }
 
+        // Track if component is mounted to prevent state updates after unmount
+        let isMounted = true;
+
         // Check if user is logged in
         const checkAuth = async () => {
             // Show a "backend is waking up" hint after 8 seconds
-            const slowTimer = setTimeout(() => setBackendSlow(true), 8000);
+            const slowTimer = setTimeout(() => {
+                if (isMounted) setBackendSlow(true);
+            }, 8000);
 
             try {
                 // 1. Identity Check - includes admin status and other privileges from JWT
                 const userData = await authService.getCurrentUser();
-                setUser({
-                    ...userData,
-                    managedClubIds: Array.isArray(userData?.managedClubIds) ? userData.managedClubIds : [],
-                    canManageClubs: userData?.canManageClubs === true,
-                    canManageLocations: userData?.canManageLocations === true,
-                    canManageEventCategories: userData?.canManageEventCategories === true,
-                    canManageEvents: userData?.canManageEvents === true,
-                    canManageAdmins: userData?.canManageAdmins === true,
-                    canManageClubAdmins: userData?.canManageClubAdmins === true,
-                    preferredClubs: Array.isArray(userData?.preferredClubs) ? userData.preferredClubs : [],
-                    notPreferredClubs: Array.isArray(userData?.notPreferredClubs) ? userData.notPreferredClubs : [],
-                    preferredCategories: Array.isArray(userData?.preferredCategories) ? userData.preferredCategories : [],
-                    notPreferredCategories: Array.isArray(userData?.notPreferredCategories) ? userData.notPreferredCategories : [],
-                });
+                if (isMounted) {
+                    setUser({
+                        ...userData,
+                        managedClubIds: Array.isArray(userData?.managedClubIds) ? userData.managedClubIds : [],
+                        canManageClubs: userData?.canManageClubs === true,
+                        canManageLocations: userData?.canManageLocations === true,
+                        canManageEventCategories: userData?.canManageEventCategories === true,
+                        canManageEvents: userData?.canManageEvents === true,
+                        canManageAdmins: userData?.canManageAdmins === true,
+                        canManageClubAdmins: userData?.canManageClubAdmins === true,
+                        preferredClubs: Array.isArray(userData?.preferredClubs) ? userData.preferredClubs : [],
+                        notPreferredClubs: Array.isArray(userData?.notPreferredClubs) ? userData.notPreferredClubs : [],
+                        preferredCategories: Array.isArray(userData?.preferredCategories) ? userData.preferredCategories : [],
+                        notPreferredCategories: Array.isArray(userData?.notPreferredCategories) ? userData.notPreferredCategories : [],
+                    });
+                }
             } catch (error) {
                 // Identity fetch failed (401) is the expected path for logged-out users
-                setUser(null);
+                if (isMounted) {
+                    setUser(null);
+                }
             } finally {
                 clearTimeout(slowTimer);
-                setBackendSlow(false);
-                setLoading(false);
+                if (isMounted) {
+                    setBackendSlow(false);
+                    setLoading(false);
+                }
             }
         };
 
         checkAuth();
+
+        // Cleanup function to mark component as unmounted
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     // Effect to auto-save notifications when changed
