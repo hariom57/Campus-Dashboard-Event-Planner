@@ -74,3 +74,20 @@ This repository is organized as a monorepo containing both the frontend and the 
 
 ## 📎 Notes
 Ensure your `VITE_API_URL` in `.env.local` points to the correct backend endpoint (either local or deployed).
+
+
+## for  Contributing:
+```bash
+# always start with latest TL code
+git pull tl main
+
+# do your work
+git add .
+git commit -m "..."
+
+# push to TL (primary)
+git push tl main
+
+# optional: mirror to your repo
+git push origin main
+```
